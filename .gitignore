@@ -1,0 +1,14 @@
+# IDE workspace state
+.openclaw/
+
+# Env files (secrets, webhook URLs) — copy from .env.example and fill in
+*.env
+!*.env.example
+
+# n8n-trigger skill: webhook URLs and secrets (do not commit)
+skills/n8n-trigger/.env
+
+# Outbound queue: draft contents and temp files
+.outbound-queue/queue.json
+.outbound-queue/*.tmp
+.outbound-queue/approval_chat_id
