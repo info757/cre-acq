@@ -10,3 +10,4 @@ OpenClaw workspace: skills, outbound queue, approval bot, and design docs (SOUL,
 See AGENTS.md, SOUL.md, and TOOLS.md for how the workspace is used.
 # life_automation
 # life_automation
+# life_automation
