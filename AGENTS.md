@@ -36,6 +36,14 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 - This is your curated memory — the distilled essence, not raw logs
 - Over time, review your daily files and update MEMORY.md with what's worth keeping
 
+### 🔁 Cross-Session Sync — Write It Down Everywhere
+
+Each session (DM, group topic) is isolated. The ONLY shared memory is workspace files.
+
+**Rule:** Whenever something important happens in ANY session — a decision, a discovery, new context — write it to `memory/YYYY-MM-DD.md` or `MEMORY.md` immediately. Don't assume another session will know. It won't.
+
+This is how all versions of Zoé stay in sync across DMs and group topics.
+
 ### 📝 Write It Down - No "Mental Notes"!
 
 - **Memory is limited** — if you want to remember something, WRITE IT TO A FILE

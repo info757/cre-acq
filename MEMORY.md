@@ -41,8 +41,30 @@ _(None yet)_
 
 _(None yet)_
 
+## Agent HQ — Telegram Group
+
+- **Chat ID:** -1003783443203
+- **Topic 1:** General
+- **Topic 2:** Code and Dev
+- **Topic 3:** Research
+- **Topic 4:** Content
+- **Topic 5:** Automations
+- Bot: @Holt_ai_bot (ID: 8453434126)
+- Group policy: allowlist (only this group allowed)
+- requireMention: false (responds without being tagged)
+
 ## Ongoing Projects
 
-<!-- Current projects and their status -->
+### Email Setup
+- n8n send-email workflow working (webhook: localhost:5678)
+- Approval queue live: `.outbound-queue/queue.sh`
+- Approval bot: @Holt_ai_bot (second bot token in .env), run via `.outbound-queue/run-approval-bot.sh`
+- Inbox reading: ideas saved in `memory/inbox-reading-ideas.md` — needs n8n workflow
 
-_(None yet)_
+## Cross-Session Memory Convention
+
+Every version of me (DM, group topics) writes important decisions, context, and discoveries to:
+- `memory/YYYY-MM-DD.md` — daily log
+- `MEMORY.md` — long-term curated facts
+
+This is how all sessions stay in sync. If it's worth remembering, write it down.
