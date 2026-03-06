@@ -193,14 +193,14 @@ def main():
         print(f"[format_output] ERROR building narrator prompt: {e}", file=sys.stderr)
         sys.exit(1)
     
-    # Call Claude
+    # Call Claude for narrative
     try:
         print("[format_output] Calling Claude for narrative...", file=sys.stderr)
         narrative = call_claude_for_narrative(narrator_prompt)
         print("[format_output] Narrative generated.", file=sys.stderr)
     except Exception as e:
         print(f"[format_output] ERROR calling Claude: {e}", file=sys.stderr)
-        # Don't fail — just leave narrative empty
+        # Don't fail — just use fallback narrative
         narrative = "(Narrative generation failed)"
     
     # Add narrative to result

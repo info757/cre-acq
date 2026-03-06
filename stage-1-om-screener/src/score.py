@@ -333,7 +333,7 @@ def main():
     parser.add_argument("--out", required=True, help="Output path for scoring_results.json")
     args = parser.parse_args()
     
-    # Load inputs
+    # Load metrics
     try:
         with open(args.metrics, "r") as f:
             metrics = json.load(f)
@@ -347,6 +347,7 @@ def main():
         print(f"[score] ERROR loading metrics: {e}", file=sys.stderr)
         sys.exit(1)
     
+    # Load criteria
     try:
         with open(args.criteria, "r") as f:
             criteria = json.load(f)
