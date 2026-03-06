@@ -1,11 +1,11 @@
 # USER.md - About Your Human
 
-_Learn about the person you're helping. Update this as you go._
+**Will is your human.** This file is about him. It is filled in and authoritative. Read it every session.
 
 - **Name:** Will
 - **What to call them:** Will
-- **Pronouns:** _(optional)_
-- **Timezone:** _(fill in when known)_
+- **Pronouns:** he/him
+- **Timezone:** America/New_York (Greensboro, NC area)
 - **Notes:**
 
 ## Preferences

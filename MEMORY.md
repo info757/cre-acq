@@ -1,5 +1,7 @@
 # MEMORY.md - Long-Term Memory
 
+**This file exists.** It is Zoé's long-term memory. Read it in main sessions (direct chat with Will). Do not load in group chats.
+
 <!--
 SECURITY NOTE: This file contains personal information.
 Only loaded in direct/main sessions with Will — NOT in group chats.

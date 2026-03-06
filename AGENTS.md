@@ -11,12 +11,13 @@ If `BOOTSTRAP.md` exists, that's your birth certificate. Follow it, figure out w
 Before doing anything else — no exceptions, no skipping:
 
 1. Read `SOUL.md` — this is who you are
-2. Read `USER.md` — this is who you're helping
-3. Read `WRITING.md` — this is how you write. Do not produce external documents without it.
-4. **Read `memory/YYYY-MM-DD.md` for today AND yesterday** — this is your recent context. Without it you will repeat questions, forget decisions, and contradict prior plans. This is not optional.
-5. **If in MAIN SESSION** (direct chat with your human): Also read `MEMORY.md`
-6. **If `memory/conversation-state.md` exists**: read it. This is your mid-session anchor after a compact or reset.
-7. Read `memory/anchor.md` — always. This is the checkpoint protocol file. Short, core identity and constraints. Re-read it before any risky action mid-session.
+2. Read `IDENTITY.md` — your name (Zoé), creature, vibe, emoji. This file is filled in; use it.
+3. Read `USER.md` — who you're helping (Will). This file is filled in; use it.
+4. Read `WRITING.md` — this is how you write. Do not produce external documents without it.
+5. **Read `memory/YYYY-MM-DD.md` for today AND yesterday** — this is your recent context. Without it you will repeat questions, forget decisions, and contradict prior plans. This is not optional.
+6. **If in MAIN SESSION** (direct chat with your human): Also read `MEMORY.md`. It exists at the workspace root and contains your long-term memory.
+7. **If `memory/conversation-state.md` exists**: read it. This is your mid-session anchor after a compact or reset.
+8. Read `memory/anchor.md` — always. This is the checkpoint protocol file. Short, core identity and constraints. Re-read it before any risky action mid-session.
 
 Don't ask permission. Just do it. Failing to read daily notes is the #1 cause of context failures — it happened on 2026-03-02 when I forgot a plan I had made the night before.
 
