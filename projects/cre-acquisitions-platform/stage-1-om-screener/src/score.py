@@ -34,55 +34,12 @@ class Screener:
         "interest_rate": (0.01, 0.15),           # 1% to 15% (realistic lending rates)
     }
     
-    # Required criteria sections (fail if missing)
-    REQUIRED_CRITERIA_SECTIONS = ["property_types", "debt", "income", "expenses"]
-    REQUIRED_DEBT_FIELDS = ["hard_min_dscr", "min_dscr", "max_ltv"]
-    REQUIRED_INCOME_FIELDS = ["min_cap_rate_trailing", "min_occupancy"]
-    REQUIRED_EXPENSE_FIELDS = ["max_expense_ratio"]
-    
     def __init__(self, metrics: dict, criteria: dict):
         self.metrics = metrics
         self.criteria = criteria
         self.criteria_results = []
         self.red_flags = []
         self.verdict = None
-        
-        # Validate criteria schema on init — fail early if invalid
-        criteria_errors = self._validate_criteria_schema(criteria)
-        if criteria_errors:
-            raise ValueError(f"Invalid buy-criteria.json: {'; '.join(criteria_errors)}")
-    
-    def _validate_criteria_schema(self, criteria: dict) -> list:
-        """
-        Validate criteria JSON has required structure.
-        Returns list of errors (empty if valid).
-        """
-        errors = []
-        
-        # Check required top-level sections
-        for section in self.REQUIRED_CRITERIA_SECTIONS:
-            if section not in criteria:
-                errors.append(f"Missing required section: {section}")
-        
-        # Check debt section fields
-        debt = criteria.get("debt", {})
-        for field in self.REQUIRED_DEBT_FIELDS:
-            if field not in debt:
-                errors.append(f"Missing required debt.{field}")
-        
-        # Check income section fields
-        income = criteria.get("income", {})
-        for field in self.REQUIRED_INCOME_FIELDS:
-            if field not in income:
-                errors.append(f"Missing required income.{field}")
-        
-        # Check expenses section fields
-        expenses = criteria.get("expenses", {})
-        for field in self.REQUIRED_EXPENSE_FIELDS:
-            if field not in expenses:
-                errors.append(f"Missing required expenses.{field}")
-        
-        return errors
     
     def _validate_metrics_plausibility(self, metrics: dict) -> list:
         """
@@ -125,6 +82,8 @@ class Screener:
         
         # Extract convenience variables
         prop_type = self.metrics.get("property", {}).get("type")
+        prop_market = self.metrics.get("property", {}).get("market")
+        vintage = self.metrics.get("property", {}).get("vintage")
         asking_price = self.metrics.get("financials", {}).get("asking_price")
         noi_trailing = self.metrics.get("financials", {}).get("noi_trailing")
         noi_proforma = self.metrics.get("financials", {}).get("noi_proforma")
@@ -154,28 +113,64 @@ class Screener:
             else:
                 self._add_result("property_type_whitelist", prop_type, allowed_types, "PASS")
         
-        # DSCR hard minimum
-        hard_min_dscr = self.criteria.get("debt", {}).get("hard_min_dscr", 1.10)
-        if dscr is not None:
-            if dscr < hard_min_dscr:
+        # Markets whitelist (empty = no filter). Matches exact or city substring
+        # (e.g. "Phoenix" matches "Phoenix, AZ" per om-extractor format).
+        allowed_markets = self.criteria.get("markets", [])
+        if allowed_markets and prop_market is not None:
+            def _market_matches(market: str, allowed: list) -> bool:
+                if market in allowed:
+                    return True
+                return any(am in market or market in am for am in allowed)
+            if not _market_matches(prop_market, allowed_markets):
                 self._add_result(
-                    "dscr_hard_min",
-                    dscr,
-                    hard_min_dscr,
+                    "markets_whitelist",
+                    prop_market,
+                    allowed_markets,
                     "FAIL",
-                    f"DSCR {dscr} below hard minimum {hard_min_dscr}"
+                    f"Market '{prop_market}' not in whitelist: {allowed_markets}"
                 )
-                self._add_flag("DSCR", f"Hard minimum failed: {dscr} < {hard_min_dscr}")
+                self._add_flag("Market", f"Not in acquisition whitelist: {prop_market}")
             else:
-                self._add_result("dscr_hard_min", dscr, hard_min_dscr, "PASS")
-        else:
-            self._add_result("dscr_hard_min", None, hard_min_dscr, "FLAG", "DSCR not available")
+                self._add_result("markets_whitelist", prop_market, allowed_markets, "PASS")
+        
+        # Max asking price (null/missing = no filter)
+        max_asking_price = self.criteria.get("max_asking_price")
+        if max_asking_price is not None and asking_price is not None:
+            if asking_price > max_asking_price:
+                self._add_result(
+                    "max_asking_price",
+                    asking_price,
+                    max_asking_price,
+                    "FAIL",
+                    f"Asking price ${asking_price:,.0f} exceeds max ${max_asking_price:,.0f}"
+                )
+                self._add_flag("Asking Price", f"Exceeds max: ${asking_price:,.0f} > ${max_asking_price:,.0f}")
+            else:
+                self._add_result("max_asking_price", asking_price, max_asking_price, "PASS")
+        
+        # DSCR hard minimum (null/missing = no filter)
+        hard_min_dscr = self.criteria.get("debt", {}).get("hard_min_dscr")
+        if hard_min_dscr is not None:
+            if dscr is not None:
+                if dscr < hard_min_dscr:
+                    self._add_result(
+                        "dscr_hard_min",
+                        dscr,
+                        hard_min_dscr,
+                        "FAIL",
+                        f"DSCR {dscr} below hard minimum {hard_min_dscr}"
+                    )
+                    self._add_flag("DSCR", f"Hard minimum failed: {dscr} < {hard_min_dscr}")
+                else:
+                    self._add_result("dscr_hard_min", dscr, hard_min_dscr, "PASS")
+            else:
+                self._add_result("dscr_hard_min", None, hard_min_dscr, "FLAG", "DSCR not available")
         
         # === SOFT GATES (FLAG if failed, but not automatic NO-GO) ===
         
-        # DSCR minimum
-        min_dscr = self.criteria.get("debt", {}).get("min_dscr", 1.20)
-        if dscr is not None:
+        # DSCR minimum (null = no filter)
+        min_dscr = self.criteria.get("debt", {}).get("min_dscr")
+        if min_dscr is not None and dscr is not None:
             if dscr < min_dscr:
                 self._add_result(
                     "dscr_min",
@@ -188,9 +183,9 @@ class Screener:
             else:
                 self._add_result("dscr_min", dscr, min_dscr, "PASS")
         
-        # LTV maximum
-        max_ltv = self.criteria.get("debt", {}).get("max_ltv", 0.70)
-        if ltv is not None:
+        # LTV maximum (null = no filter)
+        max_ltv = self.criteria.get("debt", {}).get("max_ltv")
+        if max_ltv is not None and ltv is not None:
             if ltv > max_ltv:
                 self._add_result(
                     "ltv_max",
@@ -203,9 +198,9 @@ class Screener:
             else:
                 self._add_result("ltv_max", ltv, max_ltv, "PASS")
         
-        # Cap rate minimum
-        min_cap = self.criteria.get("income", {}).get("min_cap_rate_trailing", 0.050)
-        if cap_rate_trailing is not None:
+        # Cap rate minimum (null = no filter)
+        min_cap = self.criteria.get("income", {}).get("min_cap_rate_trailing")
+        if min_cap is not None and cap_rate_trailing is not None:
             if cap_rate_trailing < min_cap:
                 self._add_result(
                     "cap_rate_min",
@@ -218,9 +213,9 @@ class Screener:
             else:
                 self._add_result("cap_rate_min", cap_rate_trailing, min_cap, "PASS")
         
-        # Occupancy minimum
-        min_occ = self.criteria.get("income", {}).get("min_occupancy", 0.88)
-        if occupancy is not None:
+        # Occupancy minimum (null = no filter)
+        min_occ = self.criteria.get("income", {}).get("min_occupancy")
+        if min_occ is not None and occupancy is not None:
             if occupancy < min_occ:
                 self._add_result(
                     "occupancy_min",
@@ -233,9 +228,9 @@ class Screener:
             else:
                 self._add_result("occupancy_min", occupancy, min_occ, "PASS")
         
-        # Expense ratio maximum
-        max_exp = self.criteria.get("expenses", {}).get("max_expense_ratio", 0.50)
-        if expense_ratio is not None:
+        # Expense ratio maximum (null = no filter)
+        max_exp = self.criteria.get("expenses", {}).get("max_expense_ratio")
+        if max_exp is not None and expense_ratio is not None:
             if expense_ratio > max_exp:
                 self._add_result(
                     "expense_ratio_max",
@@ -248,12 +243,39 @@ class Screener:
             else:
                 self._add_result("expense_ratio_max", expense_ratio, max_exp, "PASS")
         
+        # Vintage range (null/missing = no filter)
+        vintage_min = self.criteria.get("vintage_min")
+        vintage_max = self.criteria.get("vintage_max")
+        if vintage is not None:
+            if vintage_min is not None and vintage < vintage_min:
+                self._add_result(
+                    "vintage_min",
+                    vintage,
+                    vintage_min,
+                    "FLAG",
+                    f"Vintage {vintage} below minimum {vintage_min}"
+                )
+                self._add_flag("Vintage", f"Below minimum: {vintage} < {vintage_min}")
+            elif vintage_min is not None:
+                self._add_result("vintage_min", vintage, vintage_min, "PASS")
+            if vintage_max is not None and vintage > vintage_max:
+                self._add_result(
+                    "vintage_max",
+                    vintage,
+                    vintage_max,
+                    "FLAG",
+                    f"Vintage {vintage} above maximum {vintage_max}"
+                )
+                self._add_flag("Vintage", f"Above maximum: {vintage} > {vintage_max}")
+            elif vintage_max is not None:
+                self._add_result("vintage_max", vintage, vintage_max, "PASS")
+        
         # === SOFT FLAGS (not pass/fail, just informational) ===
         
-        # Proforma NOI premium
-        if noi_trailing and noi_proforma:
-            max_premium = self.criteria.get("income", {}).get("max_proforma_noi_premium", 0.15)
-            premium = (noi_proforma - noi_trailing) / noi_trailing if noi_trailing > 0 else 0
+        # Proforma NOI premium (null = no filter)
+        max_premium = self.criteria.get("income", {}).get("max_proforma_noi_premium")
+        if max_premium is not None and noi_trailing and noi_proforma:
+            premium = (noi_proforma - noi_trailing) / noi_trailing if noi_trailing > 0 else 0.0
             if premium > max_premium:
                 self._add_flag(
                     "Proforma NOI Premium",
@@ -346,7 +368,12 @@ def main():
     except Exception as e:
         print(f"[score] ERROR loading metrics: {e}", file=sys.stderr)
         sys.exit(1)
-    
+
+    # Gate enforcement (AC5): reject metrics not confirmed by human review
+    if not metrics.get("_human_confirmed"):
+        print("[score] ERROR: Metrics must pass human review gate before scoring. Run apply_corrections.py first.", file=sys.stderr)
+        sys.exit(1)
+
     # Load criteria
     try:
         with open(args.criteria, "r") as f:

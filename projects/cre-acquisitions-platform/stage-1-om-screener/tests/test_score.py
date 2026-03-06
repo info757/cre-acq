@@ -36,6 +36,7 @@ BASE_CRITERIA = {
 
 # Test metrics fixture (strong deal)
 STRONG_METRICS = {
+    "_human_confirmed": True,  # Gate marker (apply_corrections output)
     "deal_id": "test-strong",
     "extraction_timestamp": "2026-03-05T15:30:00+00:00",
     "property": {
@@ -225,6 +226,164 @@ class TestScreenerFlags:
         print("✓ test_proforma_premium_flag PASSED")
 
 
+# Minimal criteria: all required sections, null optional filters (AC4: no filter)
+MINIMAL_CRITERIA = {
+    "property_types": [],
+    "markets": [],
+    "debt": {"hard_min_dscr": None, "min_dscr": None, "max_ltv": None},
+    "income": {"min_cap_rate_trailing": None, "min_occupancy": None, "max_proforma_noi_premium": None},
+    "expenses": {"max_expense_ratio": None},
+}
+
+# Minimal criteria with MISSING nested keys (AC4: missing = no filter)
+MINIMAL_CRITERIA_MISSING_KEYS = {
+    "property_types": [],
+    "markets": [],
+    "debt": {},  # No nested keys
+    "income": {},
+    "expenses": {},
+}
+
+
+class TestBuyCriteriaDefaults:
+    """AC4: Missing/null criteria default to no filter."""
+
+    def test_minimal_criteria_runs(self):
+        """Minimal criteria (all null filters) → score runs, deal passes."""
+        metrics = deepcopy(STRONG_METRICS)
+        screener = Screener(metrics, MINIMAL_CRITERIA)
+        result = screener.run()
+        assert result["verdict"] in ("GO", "CONDITIONAL")
+        print("✓ test_minimal_criteria_runs PASSED")
+
+    def test_property_types_empty_passes_all(self):
+        """property_types=[] → all property types pass."""
+        metrics = deepcopy(STRONG_METRICS)
+        metrics["property"]["type"] = "office"  # Not in BASE_CRITERIA whitelist
+        screener = Screener(metrics, MINIMAL_CRITERIA)
+        result = screener.run()
+        assert result["verdict"] != "NO-GO"
+        pt_result = [r for r in result["criteria_results"] if r["criterion"] == "property_type_whitelist"]
+        assert len(pt_result) == 1
+        assert pt_result[0]["result"] == "PASS"
+        print("✓ test_property_types_empty_passes_all PASSED")
+
+    def test_null_dscr_filter_skipped(self):
+        """hard_min_dscr=null → DSCR check skipped, low DSCR does not fail."""
+        metrics = deepcopy(STRONG_METRICS)
+        metrics["debt"]["dscr"] = 1.0  # Would fail if hard_min_dscr were 1.10
+        screener = Screener(metrics, MINIMAL_CRITERIA)
+        result = screener.run()
+        dscr_results = [r for r in result["criteria_results"] if "dscr" in r["criterion"]]
+        assert len(dscr_results) == 0  # No DSCR checks when null
+        assert result["verdict"] != "NO-GO"
+        print("✓ test_null_dscr_filter_skipped PASSED")
+
+    def test_missing_keys_default_to_no_filter(self):
+        """Missing nested keys (e.g. debt: {}) → validation passes, scoring runs."""
+        metrics = deepcopy(STRONG_METRICS)
+        screener = Screener(metrics, MINIMAL_CRITERIA_MISSING_KEYS)
+        result = screener.run()
+        assert result["verdict"] in ("GO", "CONDITIONAL")
+        # No debt/income/expense checks when sections are empty
+        assert result["verdict"] != "NO-GO"
+        print("✓ test_missing_keys_default_to_no_filter PASSED")
+
+    def test_missing_sections_default_to_no_filter(self):
+        """AC4: Missing top-level sections (property_types, debt, etc.) → no filter, scoring runs."""
+        metrics = deepcopy(STRONG_METRICS)
+        criteria = {}  # No sections at all
+        screener = Screener(metrics, criteria)
+        result = screener.run()
+        assert result["verdict"] in ("GO", "CONDITIONAL")
+        assert result["verdict"] != "NO-GO"
+        print("✓ test_missing_sections_default_to_no_filter PASSED")
+
+
+class TestMarketsMaxPriceVintage:
+    """Tests for markets, max_asking_price, vintage filters."""
+
+    def test_markets_whitelist_fail(self):
+        """Market not in whitelist → NO-GO."""
+        criteria = deepcopy(BASE_CRITERIA)
+        criteria["markets"] = ["Charlotte", "Dallas"]
+        metrics = deepcopy(STRONG_METRICS)
+        metrics["property"]["market"] = "Phoenix"  # Not in whitelist
+        screener = Screener(metrics, criteria)
+        result = screener.run()
+        mkt_result = [r for r in result["criteria_results"] if r["criterion"] == "markets_whitelist"]
+        assert len(mkt_result) == 1
+        assert mkt_result[0]["result"] == "FAIL"
+        assert result["verdict"] == "NO-GO"
+        print("✓ test_markets_whitelist_fail PASSED")
+
+    def test_markets_whitelist_pass(self):
+        """Market in whitelist → PASS."""
+        criteria = deepcopy(BASE_CRITERIA)
+        criteria["markets"] = ["Phoenix", "Charlotte"]
+        metrics = deepcopy(STRONG_METRICS)
+        screener = Screener(metrics, criteria)
+        result = screener.run()
+        mkt_result = [r for r in result["criteria_results"] if r["criterion"] == "markets_whitelist"]
+        assert len(mkt_result) == 1
+        assert mkt_result[0]["result"] == "PASS"
+        print("✓ test_markets_whitelist_pass PASSED")
+
+    def test_markets_city_match_phoenix_az(self):
+        """City in criteria matches 'Phoenix, AZ' in property.market (om-extractor format)."""
+        criteria = deepcopy(BASE_CRITERIA)
+        criteria["markets"] = ["Phoenix"]
+        metrics = deepcopy(STRONG_METRICS)
+        metrics["property"]["market"] = "Phoenix, AZ"
+        screener = Screener(metrics, criteria)
+        result = screener.run()
+        mkt_result = [r for r in result["criteria_results"] if r["criterion"] == "markets_whitelist"]
+        assert len(mkt_result) == 1
+        assert mkt_result[0]["result"] == "PASS"
+        assert result["verdict"] != "NO-GO"
+        print("✓ test_markets_city_match_phoenix_az PASSED")
+
+    def test_max_asking_price_fail(self):
+        """Asking price above max → NO-GO."""
+        criteria = deepcopy(BASE_CRITERIA)
+        criteria["max_asking_price"] = 30_000_000
+        metrics = deepcopy(STRONG_METRICS)
+        metrics["financials"]["asking_price"] = 38_900_000
+        screener = Screener(metrics, criteria)
+        result = screener.run()
+        price_result = [r for r in result["criteria_results"] if r["criterion"] == "max_asking_price"]
+        assert len(price_result) == 1
+        assert price_result[0]["result"] == "FAIL"
+        assert result["verdict"] == "NO-GO"
+        print("✓ test_max_asking_price_fail PASSED")
+
+    def test_max_asking_price_pass(self):
+        """Asking price at or below max → PASS."""
+        criteria = deepcopy(BASE_CRITERIA)
+        criteria["max_asking_price"] = 50_000_000
+        metrics = deepcopy(STRONG_METRICS)
+        screener = Screener(metrics, criteria)
+        result = screener.run()
+        price_result = [r for r in result["criteria_results"] if r["criterion"] == "max_asking_price"]
+        assert len(price_result) == 1
+        assert price_result[0]["result"] == "PASS"
+        print("✓ test_max_asking_price_pass PASSED")
+
+    def test_vintage_outside_range_flags(self):
+        """Vintage outside min/max range → FLAG."""
+        criteria = deepcopy(BASE_CRITERIA)
+        criteria["vintage_min"] = 2000
+        criteria["vintage_max"] = 2015
+        metrics = deepcopy(STRONG_METRICS)
+        metrics["property"]["vintage"] = 1998
+        screener = Screener(metrics, criteria)
+        result = screener.run()
+        vmin_result = [r for r in result["criteria_results"] if r["criterion"] == "vintage_min"]
+        assert len(vmin_result) == 1
+        assert vmin_result[0]["result"] == "FLAG"
+        print("✓ test_vintage_outside_range_flags PASSED")
+
+
 class TestScreenerIntegration:
     """Integration tests via main()."""
     
@@ -308,6 +467,23 @@ class TestScreenerIntegration:
 
 
 if __name__ == "__main__":
+    # TestBuyCriteriaDefaults
+    tbd = TestBuyCriteriaDefaults()
+    tbd.test_minimal_criteria_runs()
+    tbd.test_property_types_empty_passes_all()
+    tbd.test_null_dscr_filter_skipped()
+    tbd.test_missing_keys_default_to_no_filter()
+    tbd.test_missing_sections_default_to_no_filter()
+
+    # TestMarketsMaxPriceVintage
+    tmv = TestMarketsMaxPriceVintage()
+    tmv.test_markets_whitelist_fail()
+    tmv.test_markets_whitelist_pass()
+    tmv.test_markets_city_match_phoenix_az()
+    tmv.test_max_asking_price_fail()
+    tmv.test_max_asking_price_pass()
+    tmv.test_vintage_outside_range_flags()
+
     # TestScreenerBasicMetrics
     tc = TestScreenerBasicMetrics()
     tc.test_dscr_passes()
