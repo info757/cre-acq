@@ -56,8 +56,13 @@ cre-acquisitions-platform/
 
 | Stage | Brief | PRD | Architecture | Build | Codex Review | Tested | Demo |
 |---|---|---|---|---|---|---|---|
-| Stage 1 — OM Screener | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ |
+| Stage 1 — OM Screener | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ |
 | Stage 2 — Valuation | 🟡 draft | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+
+**Build Status Legend:**
+- ✅ Complete (passed tests/review)
+- 🟡 In Progress
+- ⬜ Not Started
 
 **Codex Review** is a mandatory BMAD gate. Stage cannot advance to Tested until
 `openai/gpt-5.3-codex` review returns PASS or PASS WITH WARNINGS.
