@@ -41,7 +41,7 @@ and outputs a structured one-page verdict. Built in n8n + Python. Filmed for Lin
 Before this stage advances to "Tested":
 - All src/ files and prompts/ files must pass a Codex 5.3 review
 - Trigger: tell Zoé "Z, run Codex review on stage-1"
-- Reviewer model: openai/gpt-5.3-codex (adversarial second LLM)
+- Reviewer model: openai/gpt-5.4-codex (adversarial second LLM)
 - Reports saved to: code-review/reports/
 - FAIL verdict = fix BLOCKERs and re-run before any real OM testing
 - See code-review/GATE.md for full process

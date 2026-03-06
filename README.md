@@ -65,7 +65,7 @@ cre-acquisitions-platform/
 - ⬜ Not Started
 
 **Codex Review** is a mandatory BMAD gate. Stage cannot advance to Tested until
-`openai/gpt-5.3-codex` review returns PASS or PASS WITH WARNINGS.
+`openai/gpt-5.4-codex` review returns PASS or PASS WITH WARNINGS.
 See `code-review/GATE.md` for process. Reports saved to `code-review/reports/`.
 
 ---

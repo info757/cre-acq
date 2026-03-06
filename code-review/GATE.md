@@ -32,7 +32,7 @@ Or for a specific file:
 
 Zoé will:
 1. Read the target file(s)
-2. Spawn a sub-agent using `openai/gpt-5.3-codex` with the CRE review prompt
+2. Spawn a sub-agent using `openai/gpt-5.4-codex` with the CRE review prompt
 3. Save the report to `code-review/reports/YYYY-MM-DD-<stage>-<target>.md`
 4. Surface any BLOCKER findings immediately
 
@@ -79,5 +79,5 @@ Update this table after each review.
 1. Gate is mandatory. Not optional. Not skippable.
 2. A PASS WITH WARNINGS is acceptable to advance, provided WARNINGs are tracked.
 3. FAIL means: fix the BLOCKERs, re-run, get a clean report before moving on.
-4. Reviewer model: `openai/gpt-5.3-codex`. Do not substitute.
+4. Reviewer model: `openai/gpt-5.4-codex`. Do not substitute.
 5. Reports are cumulative. Don't delete old ones. The history is the audit trail.
