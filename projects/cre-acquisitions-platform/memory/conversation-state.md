@@ -1,11 +1,13 @@
-# Conversation State — 2026-03-06 (STAGE 1 BUILD COMPLETE)
+# Conversation State — 2026-03-06 (STAGE 1 TESTED & APPROVED)
 
 ## Where We Are
-**STAGE 1: OM SCREENER — BUILD COMPLETE** ✅
+**STAGE 1: OM SCREENER — CODEX APPROVED & TESTED** ✅
 
-All 9 scripts written, tested, and ready for integration into n8n workflow.
-Days 1-3 (ingestion) passed Codex review 2026-03-05.
-Days 4-9 (review gate → output) built 2026-03-06.
+All 9 scripts written, tested, Codex 5.4 reviewed, and approved.
+- Days 1-3 (ingestion): TESTED 2026-03-05
+- Days 4-9 (review gate → scoring → output): TESTED 2026-03-06, Codex PASS 2026-03-06 10:20
+
+**Next: n8n Integration (Days 1-9 pipeline wiring)**
 
 ## Build Timeline
 - **2026-03-04**: Days 1-3 ingestion scripts (discover_inputs, parse_excel, extract_text, ocr_pdf)
