@@ -43,6 +43,7 @@ Add workflows here as Will creates them in n8n. Each workflow name maps to an en
 |---------------|---------|---------------------|
 | send-email    | N8N_WEBHOOK_SEND_EMAIL | **No** — only the approval bot (via queue.sh). Use outbound-queue skill. |
 | email-to-trash | N8N_WEBHOOK_EMAIL_TO_TRASH | No — only queue delete uses this. |
+| fetch-email   | N8N_WEBHOOK_FETCH_EMAIL | **Yes** — Zoé may trigger to fetch full email body by message ID. POST `{"messageId":"<id>"}`. Returns parsed email with `from`, `subject`, `text`, `html`, `date`, `replyTo`. |
 
 When Will adds a new workflow in n8n, he will add the webhook URL to `skills/n8n-trigger/.env` and can add a row here.
 

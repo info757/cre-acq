@@ -1,0 +1,50 @@
+# OM Screener — Cursor Rules
+# These are injected into every Cursor session for this project.
+# Zoé and Cursor share this context.
+
+## What we're building
+An AI agent that takes a CRE Offering Memorandum (PDF) as input, extracts
+key financial and property metrics, scores the deal against Will's buy criteria,
+and outputs a structured one-page verdict. Built in n8n + Python. Filmed for LinkedIn.
+
+## Architecture (5 discrete stages — build and test each before wiring)
+1. PDF ingestion → raw text extraction
+2. LLM structured extraction → typed JSON output (metrics)
+3. Scoring layer → verdict against buy criteria
+4. Output formatter → human-readable summary
+5. Delivery → Telegram notification
+
+## Data model (input/output schemas live in data-model.md — read it before coding)
+
+## Stack
+- n8n for orchestration (self-hosted, localhost:5678)
+- Python for PDF extraction (PyPDF2 or pdfplumber)
+- Claude claude-sonnet-4-6 for LLM stages
+- Prompts live in /prompts/*.md — never hardcode prompts in code
+- Tests live in /tests/ — each stage has its own test before wiring
+
+## Coding standards
+- One n8n node = one responsibility
+- All LLM prompts are files, not inline strings
+- Every stage tested on 3 real OMs before connecting to the next
+- Human review gate after stage 2 (LLM extraction) before scoring fires
+- No credentials in code — use n8n credential store
+
+## CRE domain context
+- Will has 25 years of CRE experience + completed Fast Track underwriting course
+- Buy criteria will be specified in buy-criteria.md (Will fills this in)
+- Key metrics to extract: NOI, cap rate, occupancy %, debt terms (LTV, DSCR, rate),
+  vintage, market/submarket, property type, asking price, price/unit or price/SF
+- Red flags: vacancy >15%, deferred maintenance signals, thin DSCR (<1.20), tertiary market
+
+## Code Review Gate (MANDATORY)
+Before this stage advances to "Tested":
+- All src/ files and prompts/ files must pass a Codex 5.3 review
+- Trigger: tell Zoé "Z, run Codex review on stage-1"
+- Reviewer model: openai/gpt-5.3-codex (adversarial second LLM)
+- Reports saved to: code-review/reports/
+- FAIL verdict = fix BLOCKERs and re-run before any real OM testing
+- See code-review/GATE.md for full process
+
+## Tone
+This is Will's project. Code should be readable and explainable — it'll be filmed.
