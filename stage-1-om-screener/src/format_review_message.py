@@ -211,6 +211,7 @@ def main():
     except json.JSONDecodeError as e:
         print(f"[format_review_message] ERROR: JSON parsing failed at line {e.lineno}, col {e.colno}: {e.msg}", file=sys.stderr)
         sys.exit(1)
+
     except Exception as e:
         print(f"[format_review_message] ERROR: {e}", file=sys.stderr)
         sys.exit(1)

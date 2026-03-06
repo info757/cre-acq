@@ -21,16 +21,17 @@ from decimal import Decimal
 class Screener:
     """Rule-based CRE deal screening engine."""
     
-    # Plausibility bounds for CRE metrics (guard against garbage data)
+    # Plausibility bounds for CRE metrics (industry-standard ranges, not just "not garbage")
+    # Bounds are intentionally tight to catch unrealistic extractions
     PLAUSIBLE_RANGES = {
-        "cap_rate_trailing": (0.001, 0.50),      # 0.1% to 50%
-        "cap_rate_proforma": (0.001, 0.50),
-        "occupancy_current": (0.0, 1.0),          # 0% to 100%
-        "occupancy_economic": (0.0, 1.0),
-        "dscr": (0.5, 5.0),                       # 0.5x to 5.0x
-        "ltv": (0.0, 1.0),                        # 0% to 100%
-        "expense_ratio": (0.0, 1.0),              # 0% to 100%
-        "interest_rate": (0.0, 0.25),             # 0% to 25%
+        "cap_rate_trailing": (0.02, 0.15),       # 2% to 15% (realistic range; >15% is speculative)
+        "cap_rate_proforma": (0.02, 0.15),
+        "occupancy_current": (0.50, 1.0),        # 50% to 100% (below 50% is distressed)
+        "occupancy_economic": (0.50, 1.0),
+        "dscr": (0.8, 3.0),                      # 0.8x to 3.0x (below 1.0 is negative CF; >3.0 is conservative)
+        "ltv": (0.0, 0.90),                      # 0% to 90% (above 90% is aggressive)
+        "expense_ratio": (0.15, 0.70),           # 15% to 70% (below 15% is suspicious; above 70% is poorly managed)
+        "interest_rate": (0.01, 0.15),           # 1% to 15% (realistic lending rates)
     }
     
     # Required criteria sections (fail if missing)
