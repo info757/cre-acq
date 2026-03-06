@@ -1,0 +1,147 @@
+{
+  "name": "OM Screener Pipeline (Production)",
+  "id": "omScrnProd20260306",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "om-screener/run",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-start",
+      "name": "Webhook Start",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "command": "cd \"{{ $env.CRE_ACQ_STAGE1 || '/path/to/cre-acquisitions-platform/stage-1-om-screener' }}\" && CMD=\".venv/bin/python3\"; [ -x \"$CMD\" ] || CMD=\"python3\"; \"$CMD\" src/run_pipeline.py --folder \"{{ $json.body.deal_folder }}\" --deal-id \"{{ $json.body.deal_id || $execution.id }}\" --stop-before-scoring --tmp-dir /tmp",
+        "options": {}
+      },
+      "id": "run-pipeline-stage1",
+      "name": "Run Pipeline (Stage 1)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "notes": "Runs discover→extract→merge→format_review, prints review to stdout. deal_id defaults to execution ID when missing to avoid collisions."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: ($('Run Pipeline (Stage 1)').first().json.stdout || '').substring(0, 3500), parse_mode: 'Markdown' }) }}",
+        "options": {}
+      },
+      "id": "send-review-telegram",
+      "name": "Send Review to Telegram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [580, 300],
+      "notes": "Sends the formatted review message. Trimmed below Telegram's limit before the separate approval instructions message."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: 'Reply by POSTing to this resume URL with JSON like {\"corrections\":\"ok\"} or {\"corrections\":\"fix: field value\"}.\\n\\n' + $execution.resumeUrl }) }}",
+        "options": {}
+      },
+      "id": "send-approval-instructions",
+      "name": "Send Approval Instructions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 220],
+      "notes": "Sends the resume URL separately so it is never truncated off the review message."
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "httpMethod": "POST",
+        "options": {}
+      },
+      "id": "wait-for-confirm",
+      "name": "Wait for Confirm",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [700, 300],
+      "notes": "Pauses until resume URL is called with POST. Body: { \"corrections\": \"ok\" | \"fix: field value\" }. GET bypasses gate; POST required."
+    },
+    {
+      "parameters": {
+        "command": "cd \"{{ $env.CRE_ACQ_STAGE1 || '/path/to/cre-acquisitions-platform/stage-1-om-screener' }}\" && CMD=\".venv/bin/python3\"; [ -x \"$CMD\" ] || CMD=\"python3\"; CORRECTIONS=\"{{ ($json.body && $json.body.corrections) || $json.corrections || '' }}\"; [ -n \"$CORRECTIONS\" ] || { echo 'Missing corrections in resume payload' >&2; exit 1; }; \"$CMD\" src/run_pipeline.py --confirm-only --deal-id \"{{ $('Webhook Start').first().json.body.deal_id || $execution.id }}\" --tmp-dir /tmp --corrections \"$CORRECTIONS\"",
+        "options": {}
+      },
+      "id": "run-pipeline-confirm",
+      "name": "Run Pipeline (Confirm)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [820, 300],
+      "notes": "Runs apply_corrections→score→format_output. Fails closed if corrections are missing from the POST body."
+    },
+    {
+      "parameters": {
+        "command": "cd \"{{ $env.CRE_ACQ_STAGE1 || '/path/to/cre-acquisitions-platform/stage-1-om-screener' }}\" && python3 -c \"import json; did='{{ $('Webhook Start').first().json.body.deal_id || $execution.id }}'; d=json.load(open('output/'+did+'.json')); verdict=d.get('verdict','UNKNOWN'); narrative=d.get('narrative','Screening complete.'); red_flags=d.get('red_flags', []); extra=(['', 'Red flags:'] + [f'- {flag.get(\\\"flag\\\", \\\"flag\\\")}: {flag.get(\\\"explanation\\\", \\\"\\\")}' for flag in red_flags[:5]]) if red_flags else []; message='\\n'.join([f'Screening complete for {did}', f'Verdict: {verdict}', '', narrative] + extra); print(message[:3900])\"",
+        "options": {}
+      },
+      "id": "build-verdict-message",
+      "name": "Build Verdict Message",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [940, 300],
+      "notes": "Builds a plain-text Telegram message with verdict, narrative, and up to five red flags, trimmed below Telegram's limit."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: ($('Build Verdict Message').first().json.stdout || 'Screening complete.') }) }}",
+        "options": {}
+      },
+      "id": "send-verdict-telegram",
+      "name": "Send Verdict to Telegram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1060, 300],
+      "notes": "Sends the plain-text verdict message to Telegram without Markdown parsing."
+    }
+  ],
+  "connections": {
+    "Webhook Start": {
+      "main": [[{ "node": "Run Pipeline (Stage 1)", "type": "main", "index": 0 }]]
+    },
+    "Run Pipeline (Stage 1)": {
+      "main": [[{ "node": "Send Review to Telegram", "type": "main", "index": 0 }]]
+    },
+    "Send Review to Telegram": {
+      "main": [[{ "node": "Send Approval Instructions", "type": "main", "index": 0 }]]
+    },
+    "Send Approval Instructions": {
+      "main": [[{ "node": "Wait for Confirm", "type": "main", "index": 0 }]]
+    },
+    "Wait for Confirm": {
+      "main": [[{ "node": "Run Pipeline (Confirm)", "type": "main", "index": 0 }]]
+    },
+    "Run Pipeline (Confirm)": {
+      "main": [[{ "node": "Build Verdict Message", "type": "main", "index": 0 }]]
+    },
+    "Build Verdict Message": {
+      "main": [[{ "node": "Send Verdict to Telegram", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
