@@ -1,0 +1,24 @@
+# Secrets — never commit these
+.env
+.env.*
+*.env
+*secret*
+*credential*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# macOS
+.DS_Store
+
+# Output files (deal verdicts — keep locally, not in git)
+stage-1-om-screener/output/
+/tmp/
+
+# OCR temp files
+*_raw.txt
+*_raw.txt.meta.json

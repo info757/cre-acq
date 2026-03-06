@@ -1,0 +1,58 @@
+{
+  "_comment": "Edit this file to change your screening criteria. No code changes needed.",
+  "_last_updated": "2026-03-05",
+  "_source": "Will Holt's actual underwriting model — calibrated from Mill One analysis",
+
+  "property_types": ["multifamily", "industrial", "mixed_use"],
+  "markets": [],
+  "max_asking_price": null,
+
+  "returns": {
+    "target_unlevered_irr": 0.07,
+    "min_levered_irr": 0.065,
+    "target_equity_multiple": 1.8,
+    "hold_period_years": 10,
+    "discount_rate": 0.07,
+    "rent_growth_pct": 0.03,
+    "exit_cap_rate": 0.0665
+  },
+
+  "debt": {
+    "max_ltv": 0.70,
+    "min_dscr": 1.20,
+    "hard_min_dscr": 1.10,
+    "_comment_dscr": "DSCR <1.20 = warning; <1.10 = hard NO-GO regardless of other metrics"
+  },
+
+  "income": {
+    "min_cap_rate_trailing": 0.050,
+    "min_occupancy": 0.88,
+    "max_proforma_noi_premium": 0.15,
+    "_comment_proforma": "Flag if pro-forma NOI >15% above trailing — seller optimism"
+  },
+
+  "expenses": {
+    "max_expense_ratio": 0.50,
+    "min_property_tax_pct_of_price": 0.005,
+    "_comment_tax": "Flag if stated taxes <0.5% of asking price — likely pre-reassessment. Mill One: $24k stated vs $298k correct.",
+    "tax_assessment_pct": 0.60,
+    "_comment_assessment": "NC norm: assessed at ~60% of purchase price post-sale",
+    "tax_rate": 0.012775,
+    "_comment_rate": "Guilford County rate — override for other markets"
+  },
+
+  "commercial": {
+    "max_commercial_rent_concentration": 0.40,
+    "_comment_concentration": "Warn if commercial >40% of gross rent — requires lease-level modeling",
+    "flag_leases_expiring_in_hold": true,
+    "_comment_leases": "Warn if all commercial leases expire within hold period — TI/downtime/commission risk"
+  },
+
+  "capex": {
+    "reserve_per_sf": 0.20,
+    "expense_inflation": 0.03
+  },
+
+  "vintage_min": null,
+  "vintage_max": null
+}
