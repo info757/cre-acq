@@ -13,7 +13,15 @@ try:
 except ImportError:
     class MockAnthropic:
         pass
-    sys.modules['anthropic'] = MockAnthropic()
+    class APITimeoutError(Exception):
+        pass
+    class RateLimitError(Exception):
+        pass
+    
+    mock_anthropic = MockAnthropic()
+    mock_anthropic.APITimeoutError = APITimeoutError
+    mock_anthropic.RateLimitError = RateLimitError
+    sys.modules['anthropic'] = mock_anthropic
 
 try:
     from dotenv import load_dotenv

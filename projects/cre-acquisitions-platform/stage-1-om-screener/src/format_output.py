@@ -14,11 +14,27 @@ import argparse
 import json
 import sys
 import os
+import time
+import pathlib
 from datetime import datetime, timezone
 from decimal import Decimal
 
 import anthropic
+from anthropic import APITimeoutError, RateLimitError
 from dotenv import load_dotenv
+
+
+def validate_input_path(path_str: str) -> str:
+    """Validate that a file path exists and is readable."""
+    try:
+        path = pathlib.Path(path_str).resolve()
+        if not path.exists():
+            raise FileNotFoundError(f"File not found: {path}")
+        if not path.is_file():
+            raise ValueError(f"Not a file: {path}")
+        return str(path)
+    except (FileNotFoundError, ValueError):
+        raise
 
 
 def format_criteria_list(criteria_results: list, status: str) -> str:
@@ -87,17 +103,51 @@ def build_narrator_prompt(scored_result: dict, prompt_template: str) -> str:
     return prompt
 
 
-def call_claude_for_narrative(prompt: str) -> str:
-    """Call Claude to generate the narrative summary."""
-    client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from env
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=512,
-        messages=[{"role": "user", "content": prompt}],
-    )
+def call_claude_for_narrative(prompt: str, max_retries: int = 3) -> str:
+    """
+    Call Claude to generate the narrative summary with retry logic.
     
-    narrative = message.content[0].text.strip()
-    return narrative
+    Args:
+        prompt: Prompt to send to Claude
+        max_retries: Number of retry attempts for transient errors
+    
+    Returns:
+        Generated narrative text
+    
+    Raises:
+        Exception: If all retries fail or unrecoverable error occurs
+    """
+    client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from env
+    
+    for attempt in range(max_retries):
+        try:
+            message = client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=512,
+                timeout=30.0,  # 30-second timeout per request
+                messages=[{"role": "user", "content": prompt}],
+            )
+            
+            narrative = message.content[0].text.strip()
+            if attempt > 0:
+                print(f"[format_output] Claude call succeeded on retry {attempt}", file=sys.stderr)
+            return narrative
+        
+        except (APITimeoutError, RateLimitError) as e:
+            if attempt < max_retries - 1:
+                wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                print(
+                    f"[format_output] Claude API error (attempt {attempt + 1}/{max_retries}): {type(e).__name__}. "
+                    f"Retrying in {wait_time}s...",
+                    file=sys.stderr
+                )
+                time.sleep(wait_time)
+            else:
+                # All retries exhausted
+                raise
+        except Exception as e:
+            # Unrecoverable error, don't retry
+            raise
 
 
 def main():
@@ -109,15 +159,26 @@ def main():
     
     # Load inputs
     try:
-        with open(args.scored, "r") as f:
+        scored_path = validate_input_path(args.scored)
+        with open(scored_path, "r") as f:
             scored_result = json.load(f)
+    except FileNotFoundError as e:
+        print(f"[format_output] ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"[format_output] ERROR: Scored JSON parsing failed at line {e.lineno}, col {e.colno}: {e.msg}", file=sys.stderr)
+        sys.exit(1)
     except Exception as e:
         print(f"[format_output] ERROR loading scored result: {e}", file=sys.stderr)
         sys.exit(1)
     
     try:
-        with open(args.prompt, "r") as f:
+        prompt_path = validate_input_path(args.prompt)
+        with open(prompt_path, "r") as f:
             prompt_template = f.read()
+    except FileNotFoundError as e:
+        print(f"[format_output] ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
     except Exception as e:
         print(f"[format_output] ERROR loading prompt: {e}", file=sys.stderr)
         sys.exit(1)
