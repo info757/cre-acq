@@ -86,7 +86,7 @@ Respond with a structured report:
 ```
 # Codex Review Report
 Date: [today]
-Model: openai/gpt-5.3-codex
+Model: openai/gpt-5.4-codex
 Files reviewed: [list]
 
 ## Summary

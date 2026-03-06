@@ -157,5 +157,18 @@ All detailed entity context lives in structured files — searchable via memory_
 - **2026-02-27:** Will's interview at Bandwidth with Jason Sommerset
 - **2026-05-xx:** Will's lease ends — financial reset opportunity
 
+## Session: 2026-03-06 — Stage 1 Build Complete
+
+Built and tested 5 scripts in sequence for human review gate → scoring → output:
+
+1. **format_review_message.py** — Formats ExtractedMetrics into readable Telegram message with source tags ([EXCEL], [CLAUDE], [?])
+2. **apply_corrections.py** — Applies human feedback (text or JSON format) to metrics before scoring
+3. **score.py** — Rule-based screening engine with 7 criteria gates + verdict determination (GO/CONDITIONAL/NO-GO)
+4. **om-narrator.md** — Claude prompt for writing deal narrative summary
+5. **format_output.py** — Assembles final ScreeningResult with Claude narrative
+
+Total test coverage: 90+ test cases across all new scripts. All passing.
+Ready for n8n workflow integration.
+
 ---
-*Last updated: 2026-03-01 by Zoé 🌹*
+*Last updated: 2026-03-06 by Zoé 🌹*
