@@ -21,15 +21,106 @@ from decimal import Decimal
 class Screener:
     """Rule-based CRE deal screening engine."""
     
+    # Plausibility bounds for CRE metrics (guard against garbage data)
+    PLAUSIBLE_RANGES = {
+        "cap_rate_trailing": (0.001, 0.50),      # 0.1% to 50%
+        "cap_rate_proforma": (0.001, 0.50),
+        "occupancy_current": (0.0, 1.0),          # 0% to 100%
+        "occupancy_economic": (0.0, 1.0),
+        "dscr": (0.5, 5.0),                       # 0.5x to 5.0x
+        "ltv": (0.0, 1.0),                        # 0% to 100%
+        "expense_ratio": (0.0, 1.0),              # 0% to 100%
+        "interest_rate": (0.0, 0.25),             # 0% to 25%
+    }
+    
+    # Required criteria sections (fail if missing)
+    REQUIRED_CRITERIA_SECTIONS = ["property_types", "debt", "income", "expenses"]
+    REQUIRED_DEBT_FIELDS = ["hard_min_dscr", "min_dscr", "max_ltv"]
+    REQUIRED_INCOME_FIELDS = ["min_cap_rate_trailing", "min_occupancy"]
+    REQUIRED_EXPENSE_FIELDS = ["max_expense_ratio"]
+    
     def __init__(self, metrics: dict, criteria: dict):
         self.metrics = metrics
         self.criteria = criteria
         self.criteria_results = []
         self.red_flags = []
         self.verdict = None
+        
+        # Validate criteria schema on init — fail early if invalid
+        criteria_errors = self._validate_criteria_schema(criteria)
+        if criteria_errors:
+            raise ValueError(f"Invalid buy-criteria.json: {'; '.join(criteria_errors)}")
+    
+    def _validate_criteria_schema(self, criteria: dict) -> list:
+        """
+        Validate criteria JSON has required structure.
+        Returns list of errors (empty if valid).
+        """
+        errors = []
+        
+        # Check required top-level sections
+        for section in self.REQUIRED_CRITERIA_SECTIONS:
+            if section not in criteria:
+                errors.append(f"Missing required section: {section}")
+        
+        # Check debt section fields
+        debt = criteria.get("debt", {})
+        for field in self.REQUIRED_DEBT_FIELDS:
+            if field not in debt:
+                errors.append(f"Missing required debt.{field}")
+        
+        # Check income section fields
+        income = criteria.get("income", {})
+        for field in self.REQUIRED_INCOME_FIELDS:
+            if field not in income:
+                errors.append(f"Missing required income.{field}")
+        
+        # Check expenses section fields
+        expenses = criteria.get("expenses", {})
+        for field in self.REQUIRED_EXPENSE_FIELDS:
+            if field not in expenses:
+                errors.append(f"Missing required expenses.{field}")
+        
+        return errors
+    
+    def _validate_metrics_plausibility(self, metrics: dict) -> list:
+        """
+        Validate extracted metrics are within plausible CRE ranges.
+        Returns list of errors (empty if valid).
+        """
+        errors = []
+        
+        # Check financials
+        fin = metrics.get("financials", {})
+        for field, (min_val, max_val) in self.PLAUSIBLE_RANGES.items():
+            val = fin.get(field)
+            if val is not None and (val < min_val or val > max_val):
+                errors.append(
+                    f"Metric {field} = {val} is outside plausible range [{min_val}, {max_val}]"
+                )
+        
+        # Check debt
+        debt = metrics.get("debt", {})
+        dscr = debt.get("dscr")
+        if dscr is not None and (dscr < 0.5 or dscr > 5.0):
+            errors.append(f"DSCR {dscr:.2f}x outside plausible range [0.5x, 5.0x]")
+        
+        ltv = debt.get("ltv")
+        if ltv is not None and (ltv < 0.0 or ltv > 1.0):
+            errors.append(f"LTV {ltv:.1%} outside plausible range [0%, 100%]")
+        
+        return errors
     
     def run(self) -> dict:
         """Run all screening rules and return ScreeningResult."""
+        
+        # FIRST: Validate extracted metrics are plausible
+        plausibility_errors = self._validate_metrics_plausibility(self.metrics)
+        if plausibility_errors:
+            # Return FAIL verdict with explanation
+            self.verdict = "NO-GO"
+            self._add_flag("Data Integrity", "Extracted metrics failed plausibility checks: " + "; ".join(plausibility_errors))
+            return self._build_result()
         
         # Extract convenience variables
         prop_type = self.metrics.get("property", {}).get("type")
@@ -245,6 +336,12 @@ def main():
     try:
         with open(args.metrics, "r") as f:
             metrics = json.load(f)
+    except FileNotFoundError:
+        print(f"[score] ERROR: Metrics file not found: {args.metrics}", file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"[score] ERROR: Metrics JSON parsing failed at line {e.lineno}, col {e.colno}: {e.msg}", file=sys.stderr)
+        sys.exit(1)
     except Exception as e:
         print(f"[score] ERROR loading metrics: {e}", file=sys.stderr)
         sys.exit(1)
@@ -252,6 +349,12 @@ def main():
     try:
         with open(args.criteria, "r") as f:
             criteria = json.load(f)
+    except FileNotFoundError:
+        print(f"[score] ERROR: Criteria file not found: {args.criteria}", file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"[score] ERROR: Criteria JSON parsing failed at line {e.lineno}, col {e.colno}: {e.msg}", file=sys.stderr)
+        sys.exit(1)
     except Exception as e:
         print(f"[score] ERROR loading criteria: {e}", file=sys.stderr)
         sys.exit(1)
@@ -260,6 +363,10 @@ def main():
     try:
         screener = Screener(metrics, criteria)
         result = screener.run()
+    except ValueError as e:
+        # Criteria validation failed
+        print(f"[score] ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
     except Exception as e:
         print(f"[score] ERROR screening: {e}", file=sys.stderr)
         sys.exit(1)

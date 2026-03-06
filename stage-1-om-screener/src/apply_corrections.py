@@ -27,6 +27,7 @@ import argparse
 import json
 import sys
 import re
+import pathlib
 from copy import deepcopy
 from decimal import Decimal
 
@@ -187,6 +188,19 @@ def apply_json_corrections(metrics: dict, corrections_dict: dict) -> dict:
     return metrics
 
 
+def validate_input_path(path_str: str) -> str:
+    """Validate that a file path exists and is readable."""
+    try:
+        path = pathlib.Path(path_str).resolve()
+        if not path.exists():
+            raise FileNotFoundError(f"File not found: {path}")
+        if not path.is_file():
+            raise ValueError(f"Not a file: {path}")
+        return str(path)
+    except (FileNotFoundError, ValueError):
+        raise
+
+
 def parse_corrections_input(corrections_str: str) -> dict | list[str] | None:
     """
     Parse the corrections input (could be JSON, text, or null).
@@ -227,8 +241,15 @@ def main():
     
     # Load extracted metrics
     try:
-        with open(args.metrics, "r") as f:
+        metrics_path = validate_input_path(args.metrics)
+        with open(metrics_path, "r") as f:
             metrics = json.load(f)
+    except FileNotFoundError as e:
+        print(f"[apply_corrections] ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"[apply_corrections] ERROR: JSON parsing failed at line {e.lineno}, col {e.colno}: {e.msg}", file=sys.stderr)
+        sys.exit(1)
     except Exception as e:
         print(f"[apply_corrections] ERROR loading metrics: {e}", file=sys.stderr)
         sys.exit(1)

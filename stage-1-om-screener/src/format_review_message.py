@@ -14,6 +14,7 @@ Output: formatted Telegram message string to stdout.
 import argparse
 import json
 import sys
+import pathlib
 
 
 def format_money(val):
@@ -162,31 +163,57 @@ def format_extracted_metrics(metrics: dict) -> str:
     return "\n".join(msg)
 
 
+def validate_input_path(path_str: str) -> str:
+    """
+    Validate that a file path exists and is readable.
+    
+    Args:
+        path_str: File path provided by user
+    
+    Returns:
+        Validated absolute path
+    
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        ValueError: If path is inaccessible
+    """
+    try:
+        path = pathlib.Path(path_str).resolve()
+        if not path.exists():
+            raise FileNotFoundError(f"File not found: {path}")
+        if not path.is_file():
+            raise ValueError(f"Not a file: {path}")
+        return str(path)
+    except (FileNotFoundError, ValueError):
+        raise
+
+
 def main():
     parser = argparse.ArgumentParser(description="Format ExtractedMetrics for Telegram review")
     parser.add_argument("--metrics", required=True, help="Path to extracted_metrics.json")
     args = parser.parse_args()
 
-    if not sys.stdin.isatty():
-        # Being called from n8n or a pipe; read and print the formatted message
-        try:
-            with open(args.metrics, "r") as f:
-                metrics = json.load(f)
-            msg = format_extracted_metrics(metrics)
-            print(msg)
-        except Exception as e:
-            print(f"[format_review_message] ERROR: {e}", file=sys.stderr)
-            sys.exit(1)
-    else:
-        # Being called directly from shell; pretty print for testing
-        try:
-            with open(args.metrics, "r") as f:
-                metrics = json.load(f)
-            msg = format_extracted_metrics(metrics)
-            print(msg)
-        except Exception as e:
-            print(f"[format_review_message] ERROR: {e}", file=sys.stderr)
-            sys.exit(1)
+    try:
+        # Validate path exists and is accessible
+        metrics_path = validate_input_path(args.metrics)
+        
+        # Read and parse JSON
+        with open(metrics_path, "r") as f:
+            metrics = json.load(f)
+        
+        # Format and output
+        msg = format_extracted_metrics(metrics)
+        print(msg)
+    
+    except FileNotFoundError as e:
+        print(f"[format_review_message] ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"[format_review_message] ERROR: JSON parsing failed at line {e.lineno}, col {e.colno}: {e.msg}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"[format_review_message] ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
