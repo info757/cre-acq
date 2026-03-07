@@ -19,7 +19,14 @@ from decimal import Decimal
 
 
 class Screener:
-    """Rule-based CRE deal screening engine."""
+    """
+    Rule-based CRE deal screening engine.
+    
+    Result semantics:
+    - PASS: Criterion met (value within threshold).
+    - FAIL: Hard criterion not met → NO-GO verdict (e.g. property type, markets, hard_min_dscr).
+    - FLAG: Soft criterion not met or data ambiguous → CONDITIONAL verdict (e.g. dscr below min but above hard_min).
+    """
     
     # Plausibility bounds for CRE metrics (industry-standard ranges, not just "not garbage")
     # Bounds are intentionally tight to catch unrealistic extractions
@@ -116,37 +123,43 @@ class Screener:
         # Markets whitelist (empty = no filter). Matches exact or city substring
         # (e.g. "Phoenix" matches "Phoenix, AZ" per om-extractor format).
         allowed_markets = self.criteria.get("markets", [])
-        if allowed_markets and prop_market is not None:
-            def _market_matches(market: str, allowed: list) -> bool:
-                if market in allowed:
-                    return True
-                return any(am in market or market in am for am in allowed)
-            if not _market_matches(prop_market, allowed_markets):
-                self._add_result(
-                    "markets_whitelist",
-                    prop_market,
-                    allowed_markets,
-                    "FAIL",
-                    f"Market '{prop_market}' not in whitelist: {allowed_markets}"
-                )
-                self._add_flag("Market", f"Not in acquisition whitelist: {prop_market}")
+        if allowed_markets:
+            if prop_market is not None:
+                def _market_matches(market: str, allowed: list) -> bool:
+                    if market in allowed:
+                        return True
+                    return any(am in market or market in am for am in allowed)
+                if not _market_matches(prop_market, allowed_markets):
+                    self._add_result(
+                        "markets_whitelist",
+                        prop_market,
+                        allowed_markets,
+                        "FAIL",
+                        f"Market '{prop_market}' not in whitelist: {allowed_markets}"
+                    )
+                    self._add_flag("Market", f"Not in acquisition whitelist: {prop_market}")
+                else:
+                    self._add_result("markets_whitelist", prop_market, allowed_markets, "PASS")
             else:
-                self._add_result("markets_whitelist", prop_market, allowed_markets, "PASS")
+                self._add_result("markets_whitelist", None, allowed_markets, "FLAG", "Market not available")
         
         # Max asking price (null/missing = no filter)
         max_asking_price = self.criteria.get("max_asking_price")
-        if max_asking_price is not None and asking_price is not None:
-            if asking_price > max_asking_price:
-                self._add_result(
-                    "max_asking_price",
-                    asking_price,
-                    max_asking_price,
-                    "FAIL",
-                    f"Asking price ${asking_price:,.0f} exceeds max ${max_asking_price:,.0f}"
-                )
-                self._add_flag("Asking Price", f"Exceeds max: ${asking_price:,.0f} > ${max_asking_price:,.0f}")
+        if max_asking_price is not None:
+            if asking_price is not None:
+                if asking_price > max_asking_price:
+                    self._add_result(
+                        "max_asking_price",
+                        asking_price,
+                        max_asking_price,
+                        "FAIL",
+                        f"Asking price ${asking_price:,.0f} exceeds max ${max_asking_price:,.0f}"
+                    )
+                    self._add_flag("Asking Price", f"Exceeds max: ${asking_price:,.0f} > ${max_asking_price:,.0f}")
+                else:
+                    self._add_result("max_asking_price", asking_price, max_asking_price, "PASS")
             else:
-                self._add_result("max_asking_price", asking_price, max_asking_price, "PASS")
+                self._add_result("max_asking_price", None, max_asking_price, "FLAG", "Asking price not available")
         
         # DSCR hard minimum (null/missing = no filter)
         hard_min_dscr = self.criteria.get("debt", {}).get("hard_min_dscr")
@@ -170,117 +183,159 @@ class Screener:
         
         # DSCR minimum (null = no filter)
         min_dscr = self.criteria.get("debt", {}).get("min_dscr")
-        if min_dscr is not None and dscr is not None:
-            if dscr < min_dscr:
-                self._add_result(
-                    "dscr_min",
-                    dscr,
-                    min_dscr,
-                    "FLAG",
-                    f"Below target DSCR: {dscr} < {min_dscr}"
-                )
-                self._add_flag("DSCR", f"Below target minimum: {dscr} < {min_dscr}")
+        if min_dscr is not None:
+            if dscr is not None:
+                if dscr < min_dscr:
+                    self._add_result(
+                        "dscr_min",
+                        dscr,
+                        min_dscr,
+                        "FLAG",
+                        f"Below target DSCR: {dscr} < {min_dscr}"
+                    )
+                    self._add_flag("DSCR", f"Below target minimum: {dscr} < {min_dscr}")
+                else:
+                    self._add_result("dscr_min", dscr, min_dscr, "PASS")
             else:
-                self._add_result("dscr_min", dscr, min_dscr, "PASS")
+                self._add_result("dscr_min", None, min_dscr, "FLAG", "DSCR not available")
         
         # LTV maximum (null = no filter)
         max_ltv = self.criteria.get("debt", {}).get("max_ltv")
-        if max_ltv is not None and ltv is not None:
-            if ltv > max_ltv:
-                self._add_result(
-                    "ltv_max",
-                    ltv,
-                    max_ltv,
-                    "FLAG",
-                    f"LTV exceeds target: {ltv} > {max_ltv}"
-                )
-                self._add_flag("LTV", f"Exceeds target: {ltv:.1%} > {max_ltv:.1%}")
+        if max_ltv is not None:
+            if ltv is not None:
+                if ltv > max_ltv:
+                    self._add_result(
+                        "ltv_max",
+                        ltv,
+                        max_ltv,
+                        "FLAG",
+                        f"LTV exceeds target: {ltv} > {max_ltv}"
+                    )
+                    self._add_flag("LTV", f"Exceeds target: {ltv:.1%} > {max_ltv:.1%}")
+                else:
+                    self._add_result("ltv_max", ltv, max_ltv, "PASS")
             else:
-                self._add_result("ltv_max", ltv, max_ltv, "PASS")
+                self._add_result("ltv_max", None, max_ltv, "FLAG", "LTV not available")
         
         # Cap rate minimum (null = no filter)
         min_cap = self.criteria.get("income", {}).get("min_cap_rate_trailing")
-        if min_cap is not None and cap_rate_trailing is not None:
-            if cap_rate_trailing < min_cap:
-                self._add_result(
-                    "cap_rate_min",
-                    cap_rate_trailing,
-                    min_cap,
-                    "FLAG",
-                    f"Cap rate below minimum: {cap_rate_trailing} < {min_cap}"
-                )
-                self._add_flag("Cap Rate", f"Below minimum: {cap_rate_trailing:.2%} < {min_cap:.2%}")
+        if min_cap is not None:
+            if cap_rate_trailing is not None:
+                if cap_rate_trailing < min_cap:
+                    self._add_result(
+                        "cap_rate_min",
+                        cap_rate_trailing,
+                        min_cap,
+                        "FLAG",
+                        f"Cap rate below minimum: {cap_rate_trailing} < {min_cap}"
+                    )
+                    self._add_flag("Cap Rate", f"Below minimum: {cap_rate_trailing:.2%} < {min_cap:.2%}")
+                else:
+                    self._add_result("cap_rate_min", cap_rate_trailing, min_cap, "PASS")
             else:
-                self._add_result("cap_rate_min", cap_rate_trailing, min_cap, "PASS")
+                self._add_result("cap_rate_min", None, min_cap, "FLAG", "Cap rate not available")
         
         # Occupancy minimum (null = no filter)
         min_occ = self.criteria.get("income", {}).get("min_occupancy")
-        if min_occ is not None and occupancy is not None:
-            if occupancy < min_occ:
-                self._add_result(
-                    "occupancy_min",
-                    occupancy,
-                    min_occ,
-                    "FLAG",
-                    f"Occupancy below minimum: {occupancy} < {min_occ}"
-                )
-                self._add_flag("Occupancy", f"Below minimum: {occupancy:.1%} < {min_occ:.1%}")
+        if min_occ is not None:
+            if occupancy is not None:
+                if occupancy < min_occ:
+                    self._add_result(
+                        "occupancy_min",
+                        occupancy,
+                        min_occ,
+                        "FLAG",
+                        f"Occupancy below minimum: {occupancy} < {min_occ}"
+                    )
+                    self._add_flag("Occupancy", f"Below minimum: {occupancy:.1%} < {min_occ:.1%}")
+                else:
+                    self._add_result("occupancy_min", occupancy, min_occ, "PASS")
             else:
-                self._add_result("occupancy_min", occupancy, min_occ, "PASS")
+                self._add_result("occupancy_min", None, min_occ, "FLAG", "Occupancy not available")
         
         # Expense ratio maximum (null = no filter)
         max_exp = self.criteria.get("expenses", {}).get("max_expense_ratio")
-        if max_exp is not None and expense_ratio is not None:
-            if expense_ratio > max_exp:
-                self._add_result(
-                    "expense_ratio_max",
-                    expense_ratio,
-                    max_exp,
-                    "FLAG",
-                    f"Expense ratio above maximum: {expense_ratio} > {max_exp}"
-                )
-                self._add_flag("Expense Ratio", f"Exceeds maximum: {expense_ratio:.1%} > {max_exp:.1%}")
+        if max_exp is not None:
+            if expense_ratio is not None:
+                if expense_ratio > max_exp:
+                    self._add_result(
+                        "expense_ratio_max",
+                        expense_ratio,
+                        max_exp,
+                        "FLAG",
+                        f"Expense ratio above maximum: {expense_ratio} > {max_exp}"
+                    )
+                    self._add_flag("Expense Ratio", f"Exceeds maximum: {expense_ratio:.1%} > {max_exp:.1%}")
+                else:
+                    self._add_result("expense_ratio_max", expense_ratio, max_exp, "PASS")
             else:
-                self._add_result("expense_ratio_max", expense_ratio, max_exp, "PASS")
+                self._add_result("expense_ratio_max", None, max_exp, "FLAG", "Expense ratio not available")
         
         # Vintage range (null/missing = no filter)
         vintage_min = self.criteria.get("vintage_min")
         vintage_max = self.criteria.get("vintage_max")
-        if vintage is not None:
-            if vintage_min is not None and vintage < vintage_min:
-                self._add_result(
-                    "vintage_min",
-                    vintage,
-                    vintage_min,
-                    "FLAG",
-                    f"Vintage {vintage} below minimum {vintage_min}"
-                )
-                self._add_flag("Vintage", f"Below minimum: {vintage} < {vintage_min}")
-            elif vintage_min is not None:
-                self._add_result("vintage_min", vintage, vintage_min, "PASS")
-            if vintage_max is not None and vintage > vintage_max:
-                self._add_result(
-                    "vintage_max",
-                    vintage,
-                    vintage_max,
-                    "FLAG",
-                    f"Vintage {vintage} above maximum {vintage_max}"
-                )
-                self._add_flag("Vintage", f"Above maximum: {vintage} > {vintage_max}")
-            elif vintage_max is not None:
-                self._add_result("vintage_max", vintage, vintage_max, "PASS")
+        if vintage_min is not None or vintage_max is not None:
+            if vintage is not None:
+                if vintage_min is not None and vintage < vintage_min:
+                    self._add_result(
+                        "vintage_min",
+                        vintage,
+                        vintage_min,
+                        "FLAG",
+                        f"Vintage {vintage} below minimum {vintage_min}"
+                    )
+                    self._add_flag("Vintage", f"Below minimum: {vintage} < {vintage_min}")
+                elif vintage_min is not None:
+                    self._add_result("vintage_min", vintage, vintage_min, "PASS")
+                if vintage_max is not None and vintage > vintage_max:
+                    self._add_result(
+                        "vintage_max",
+                        vintage,
+                        vintage_max,
+                        "FLAG",
+                        f"Vintage {vintage} above maximum {vintage_max}"
+                    )
+                    self._add_flag("Vintage", f"Above maximum: {vintage} > {vintage_max}")
+                elif vintage_max is not None:
+                    self._add_result("vintage_max", vintage, vintage_max, "PASS")
+            else:
+                if vintage_min is not None:
+                    self._add_result("vintage_min", None, vintage_min, "FLAG", "Vintage not available")
+                if vintage_max is not None:
+                    self._add_result("vintage_max", None, vintage_max, "FLAG", "Vintage not available")
         
         # === SOFT FLAGS (not pass/fail, just informational) ===
         
-        # Proforma NOI premium (null = no filter)
+        # Proforma NOI premium (null = no filter). Must produce criteria_results per AC1.
         max_premium = self.criteria.get("income", {}).get("max_proforma_noi_premium")
-        if max_premium is not None and noi_trailing and noi_proforma:
-            premium = (noi_proforma - noi_trailing) / noi_trailing if noi_trailing > 0 else 0.0
-            if premium > max_premium:
-                self._add_flag(
-                    "Proforma NOI Premium",
-                    f"Proforma {premium:.1%} above trailing — verify underwriting assumptions"
-                )
+        if max_premium is not None:
+            if noi_trailing is not None and noi_proforma is not None:
+                if noi_trailing > 0:
+                    premium = (noi_proforma - noi_trailing) / noi_trailing
+                    if premium > max_premium:
+                        self._add_result(
+                            "max_proforma_noi_premium",
+                            premium,
+                            max_premium,
+                            "FLAG",
+                            f"Proforma NOI premium {premium:.1%} above max {max_premium:.1%}"
+                        )
+                        self._add_flag(
+                            "Proforma NOI Premium",
+                            f"Proforma {premium:.1%} above trailing — verify underwriting assumptions"
+                        )
+                    else:
+                        self._add_result("max_proforma_noi_premium", premium, max_premium, "PASS")
+                else:
+                    self._add_result(
+                        "max_proforma_noi_premium",
+                        None,
+                        max_premium,
+                        "FLAG",
+                        "Trailing NOI must be positive to compute premium"
+                    )
+            else:
+                self._add_result("max_proforma_noi_premium", None, max_premium, "FLAG", "Proforma NOI not available")
         
         # Property tax discrepancy (only flag if explicitly stated in extraction_flags)
         # This prevents false positives from estimation logic

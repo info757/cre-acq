@@ -98,6 +98,44 @@ code, out, err = run("/tmp/this_folder_does_not_exist_xyz")
 check("exit code 1 on missing folder", code == 1)
 check("error message on stderr", "ERROR" in err)
 
+# Test 6: Multiple PDFs — verify largest is selected (AC3)
+print("\nTest 6: Multiple PDFs — largest selected")
+with tempfile.TemporaryDirectory() as tmpdir:
+    mill_one = os.path.join(SAMPLE_DIR, "Mill-One-2025 (1) (1).pdf")
+    navaho = os.path.join(SAMPLE_DIR, "Navaho Drive Properties, LLC - Pref Equity Raise.pdf")
+    if os.path.exists(mill_one) and os.path.exists(navaho):
+        shutil.copy(mill_one, tmpdir)
+        shutil.copy(navaho, tmpdir)
+        code, out, err = run(tmpdir)
+        check("exit code 0", code == 0)
+        data = json.loads(out)
+        check("has_pdf = true", data["has_pdf"] is True)
+        # Navaho is larger than Mill One; pdf_path should be Navaho
+        navaho_size = os.path.getsize(navaho)
+        mill_one_size = os.path.getsize(mill_one)
+        larger_basename = "Navaho Drive Properties, LLC - Pref Equity Raise.pdf" if navaho_size > mill_one_size else "Mill-One-2025 (1) (1).pdf"
+        check("pdf_path is largest PDF", data["pdf_path"] and larger_basename in data["pdf_path"],
+              f"expected {larger_basename} in pdf_path")
+        check("WARNING in stderr for multiple PDFs", "WARNING" in err and "multiple PDFs" in err)
+    else:
+        check("sample PDFs found", False, "Mill One or Navaho PDF missing")
+
+# Test 7: Excel-only folder (no PDF)
+print("\nTest 7: Excel-only folder")
+with tempfile.TemporaryDirectory() as tmpdir:
+    excel_src = os.path.join(SAMPLE_DIR, "Mill One 2024-2025 Financials.xlsx")
+    if os.path.exists(excel_src):
+        shutil.copy(excel_src, tmpdir)
+        code, out, err = run(tmpdir)
+        check("exit code 0", code == 0)
+        data = json.loads(out)
+        check("has_pdf = false", data["has_pdf"] is False)
+        check("pdf_path is null", data["pdf_path"] is None)
+        check("has_excel = true", data["has_excel"] is True)
+        check("excel_paths has 1 file", len(data["excel_paths"]) == 1)
+    else:
+        check("sample Excel found", False, "Mill One Financials.xlsx missing")
+
 # ---------------------------------------------------------------------------
 print()
 passed = sum(1 for r in results if r[0] == PASS)

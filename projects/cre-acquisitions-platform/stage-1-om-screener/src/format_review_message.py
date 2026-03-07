@@ -79,61 +79,61 @@ def format_extracted_metrics(metrics: dict) -> str:
     msg.append("\n*PROPERTY*")
     prop = metrics.get("property", {})
 
-    if prop.get("type"):
+    if prop.get("type") is not None:
         msg.append(f"  Type: {prop['type']}{source_tag(sources, 'property', 'type')}")
-    if prop.get("market"):
+    if prop.get("market") is not None:
         msg.append(f"  Market: {prop['market']}{source_tag(sources, 'property', 'market')}")
-    if prop.get("submarket"):
+    if prop.get("submarket") is not None:
         msg.append(f"  Submarket: {prop['submarket']}{source_tag(sources, 'property', 'submarket')}")
-    if prop.get("address"):
+    if prop.get("address") is not None:
         msg.append(f"  Address: {prop['address']}{source_tag(sources, 'property', 'address')}")
-    if prop.get("vintage"):
+    if prop.get("vintage") is not None:
         msg.append(f"  Built: {prop['vintage']}{source_tag(sources, 'property', 'vintage')}")
-    if prop.get("units"):
+    if prop.get("units") is not None:
         msg.append(f"  Units: {format_number(prop['units'])}{source_tag(sources, 'property', 'units')}")
-    if prop.get("total_sf"):
+    if prop.get("total_sf") is not None:
         msg.append(f"  Total SF: {format_number(prop['total_sf'])}{source_tag(sources, 'property', 'total_sf')}")
 
     # ========== FINANCIALS ==========
     msg.append("\n*FINANCIALS*")
     fin = metrics.get("financials", {})
 
-    if fin.get("asking_price"):
+    if fin.get("asking_price") is not None:
         msg.append(f"  Asking Price: {format_money(fin['asking_price'])}{source_tag(sources, 'financials', 'asking_price')}")
-    if fin.get("price_per_unit"):
+    if fin.get("price_per_unit") is not None:
         msg.append(f"  $/Unit: {format_money(fin['price_per_unit'])}{source_tag(sources, 'financials', 'price_per_unit')}")
-    if fin.get("price_per_sf"):
+    if fin.get("price_per_sf") is not None:
         msg.append(f"  $/SF: {format_money(fin['price_per_sf'])}{source_tag(sources, 'financials', 'price_per_sf')}")
-    if fin.get("gross_revenue"):
+    if fin.get("gross_revenue") is not None:
         msg.append(f"  Gross Revenue: {format_money(fin['gross_revenue'])}{source_tag(sources, 'financials', 'gross_revenue')}")
-    if fin.get("total_expenses"):
+    if fin.get("total_expenses") is not None:
         msg.append(f"  Total Expenses: {format_money(fin['total_expenses'])}{source_tag(sources, 'financials', 'total_expenses')}")
-    if fin.get("noi_trailing"):
+    if fin.get("noi_trailing") is not None:
         msg.append(f"  NOI (Trailing): {format_money(fin['noi_trailing'])}{source_tag(sources, 'financials', 'noi_trailing')}")
-    if fin.get("noi_proforma"):
+    if fin.get("noi_proforma") is not None:
         msg.append(f"  NOI (Pro Forma): {format_money(fin['noi_proforma'])}{source_tag(sources, 'financials', 'noi_proforma')}")
-    if fin.get("cap_rate_trailing"):
+    if fin.get("cap_rate_trailing") is not None:
         msg.append(f"  Cap Rate (Trailing): {format_percent(fin['cap_rate_trailing'])}{source_tag(sources, 'financials', 'cap_rate_trailing')}")
-    if fin.get("cap_rate_proforma"):
+    if fin.get("cap_rate_proforma") is not None:
         msg.append(f"  Cap Rate (Pro Forma): {format_percent(fin['cap_rate_proforma'])}{source_tag(sources, 'financials', 'cap_rate_proforma')}")
-    if fin.get("occupancy_current"):
+    if fin.get("occupancy_current") is not None:
         msg.append(f"  Occupancy (Current): {format_percent(fin['occupancy_current'])}{source_tag(sources, 'financials', 'occupancy_current')}")
-    if fin.get("occupancy_economic"):
+    if fin.get("occupancy_economic") is not None:
         msg.append(f"  Occupancy (Economic): {format_percent(fin['occupancy_economic'])}{source_tag(sources, 'financials', 'occupancy_economic')}")
-    if fin.get("expense_ratio"):
+    if fin.get("expense_ratio") is not None:
         msg.append(f"  Expense Ratio: {format_percent(fin['expense_ratio'])}{source_tag(sources, 'financials', 'expense_ratio')}")
 
     # ========== DEBT ==========
     msg.append("\n*DEBT*")
     debt = metrics.get("debt", {})
 
-    if debt.get("ltv"):
+    if debt.get("ltv") is not None:
         msg.append(f"  LTV: {format_percent(debt['ltv'])}{source_tag(sources, 'debt', 'ltv')}")
-    if debt.get("dscr"):
+    if debt.get("dscr") is not None:
         msg.append(f"  DSCR: {format_number(debt['dscr'])}{source_tag(sources, 'debt', 'dscr')}")
-    if debt.get("interest_rate"):
+    if debt.get("interest_rate") is not None:
         msg.append(f"  Interest Rate: {format_percent(debt['interest_rate'])}{source_tag(sources, 'debt', 'interest_rate')}")
-    if debt.get("maturity_date"):
+    if debt.get("maturity_date") is not None:
         msg.append(f"  Maturity: {debt['maturity_date']}{source_tag(sources, 'debt', 'maturity_date')}")
     if debt.get("assumable") is not None:
         msg.append(f"  Assumable: {'Yes' if debt['assumable'] else 'No'}{source_tag(sources, 'debt', 'assumable')}")

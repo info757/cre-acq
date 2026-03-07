@@ -80,6 +80,8 @@ def classify_file(path: str, sheet_names: list[str]) -> str:
     sheets_lower = [s.lower() for s in sheet_names]
     if any("financial" in s or "income" in s or "noi" in s for s in sheets_lower):
         return "financials"
+    if any("commercial" in s and ("rent" in s or "rr" in s or "lease" in s) for s in sheets_lower):
+        return "commercial_rent_roll"
     if any("rent roll" in s or "rr" in s for s in sheets_lower):
         return "rent_roll"
     if any("loan" in s or "debt" in s for s in sheets_lower):
@@ -610,7 +612,7 @@ def main():
 
     # Write output
     os.makedirs(os.path.dirname(args.out) if os.path.dirname(args.out) else ".", exist_ok=True)
-    with open(args.out, "w") as f:
+    with open(args.out, "w", encoding="utf-8") as f:
         json.dump(result, f, indent=2, default=decimal_default)
 
     print(f"  Excel extraction complete → {args.out}", file=sys.stderr)

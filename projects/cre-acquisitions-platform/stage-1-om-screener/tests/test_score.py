@@ -47,7 +47,7 @@ STRONG_METRICS = {
     "financials": {
         "asking_price": 38900000,
         "noi_trailing": 1982813,
-        "noi_proforma": None,
+        "noi_proforma": 2181094,  # ~10% premium, within max 15%
         "cap_rate_trailing": 0.051,
         "occupancy_current": 0.92,
         "expense_ratio": 0.37,
@@ -214,16 +214,57 @@ class TestScreenerFlags:
         print("✓ test_extraction_flags_propagated PASSED")
     
     def test_proforma_premium_flag(self):
-        """Proforma NOI >15% above trailing should flag."""
+        """Proforma NOI >15% above trailing should flag in criteria_results and red_flags."""
         metrics = deepcopy(STRONG_METRICS)
         metrics["financials"]["noi_trailing"] = 1000000
         metrics["financials"]["noi_proforma"] = 1200000  # 20% premium > 15% max
         screener = Screener(metrics, BASE_CRITERIA)
         result = screener.run()
         
+        proforma_result = [r for r in result["criteria_results"] if r["criterion"] == "max_proforma_noi_premium"]
+        assert len(proforma_result) == 1
+        assert proforma_result[0]["result"] == "FLAG"
         proforma_flags = [f for f in result["red_flags"] if "Proforma" in f["flag"]]
         assert len(proforma_flags) > 0
         print("✓ test_proforma_premium_flag PASSED")
+    
+    def test_proforma_premium_pass_in_criteria_results(self):
+        """Proforma NOI within max premium → PASS in criteria_results."""
+        metrics = deepcopy(STRONG_METRICS)
+        # STRONG_METRICS has noi_proforma 2181094, noi_trailing 1982813 (~10% < 15%)
+        screener = Screener(metrics, BASE_CRITERIA)
+        result = screener.run()
+        proforma_result = [r for r in result["criteria_results"] if r["criterion"] == "max_proforma_noi_premium"]
+        assert len(proforma_result) == 1
+        assert proforma_result[0]["result"] == "PASS"
+        print("✓ test_proforma_premium_pass_in_criteria_results PASSED")
+    
+    def test_proforma_premium_trailing_zero_flags(self):
+        """Trailing NOI zero or negative → FLAG (cannot compute premium)."""
+        metrics = deepcopy(STRONG_METRICS)
+        metrics["financials"]["noi_trailing"] = 0
+        metrics["financials"]["noi_proforma"] = 1000000
+        screener = Screener(metrics, BASE_CRITERIA)
+        result = screener.run()
+        proforma_result = [r for r in result["criteria_results"] if r["criterion"] == "max_proforma_noi_premium"]
+        assert len(proforma_result) == 1
+        assert proforma_result[0]["result"] == "FLAG"
+        assert "positive" in (proforma_result[0].get("note") or "").lower()
+        print("✓ test_proforma_premium_trailing_zero_flags PASSED")
+    
+    def test_missing_metric_flags(self):
+        """Criterion set but metric missing → FLAG in criteria_results."""
+        metrics = deepcopy(STRONG_METRICS)
+        metrics["financials"]["asking_price"] = None
+        criteria = deepcopy(BASE_CRITERIA)
+        criteria["max_asking_price"] = 50_000_000
+        screener = Screener(metrics, criteria)
+        result = screener.run()
+        price_result = [r for r in result["criteria_results"] if r["criterion"] == "max_asking_price"]
+        assert len(price_result) == 1
+        assert price_result[0]["result"] == "FLAG"
+        assert "not available" in (price_result[0].get("note") or "").lower()
+        print("✓ test_missing_metric_flags PASSED")
 
 
 # Minimal criteria: all required sections, null optional filters (AC4: no filter)
@@ -506,6 +547,9 @@ if __name__ == "__main__":
     tf = TestScreenerFlags()
     tf.test_extraction_flags_propagated()
     tf.test_proforma_premium_flag()
+    tf.test_proforma_premium_pass_in_criteria_results()
+    tf.test_proforma_premium_trailing_zero_flags()
+    tf.test_missing_metric_flags()
     
     # TestScreenerIntegration
     ti = TestScreenerIntegration()

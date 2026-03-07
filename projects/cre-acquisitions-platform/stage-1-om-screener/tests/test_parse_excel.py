@@ -18,6 +18,11 @@ import sys
 import tempfile
 from decimal import Decimal
 
+try:
+    import openpyxl
+except ImportError:
+    openpyxl = None
+
 PYTHON = os.path.join(os.path.dirname(__file__), "../.venv/bin/python3")
 SCRIPT = os.path.join(os.path.dirname(__file__), "../src/parse_excel.py")
 SAMPLE_DIR = os.path.join(os.path.dirname(__file__), "../../tests/sample-oms")
@@ -161,6 +166,24 @@ with tempfile.TemporaryDirectory() as tmpdir:
             check("two loans extracted", loan_data.get("loan_count") == 2)
             check("no rent roll fields in loan-only output",
                   "unit_count" not in loan_data)
+
+    # Test 6: Unrecognized Excel file skipped with warning (AC5)
+    print("\nTest 6: Unrecognized Excel file skipped with warning")
+    if openpyxl:
+        unknown_xlsx = os.path.join(tmpdir, "GenericDataExport.xlsx")
+        wb = openpyxl.Workbook()
+        wb.active["A1"] = "Some data"
+        wb.save(unknown_xlsx)
+        wb.close()
+        mixed_files = json.dumps([fin_path, unknown_xlsx] if os.path.exists(fin_path) else [unknown_xlsx])
+        out6 = os.path.join(tmpdir, "mixed.json")
+        code, out, err = run(mixed_files, out6)
+        check("exit code 0 with unrecognized file", code == 0)
+        check("unrecognized file warning on stderr",
+              "unrecognized" in err.lower() or "skipping" in err.lower(),
+              f"stderr: {err[:200]}")
+    else:
+        print("  ⚠️  Skipping — openpyxl not available")
 
 # ---------------------------------------------------------------------------
 print()

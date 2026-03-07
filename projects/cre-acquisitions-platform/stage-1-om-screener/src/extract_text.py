@@ -68,7 +68,7 @@ def extract_text(pdf_path: str, out_path: str) -> dict:
     }
 
     meta_path = out_path + ".meta.json"
-    with open(meta_path, "w") as f:
+    with open(meta_path, "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2)
 
     return meta

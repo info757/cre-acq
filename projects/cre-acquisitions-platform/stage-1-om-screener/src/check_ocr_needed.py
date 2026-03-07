@@ -7,6 +7,7 @@ Reads the .meta.json written by extract_text.py and applies a threshold:
 
 Usage:
     python3 src/check_ocr_needed.py --meta /tmp/deal_raw.txt.meta.json
+    python3 src/check_ocr_needed.py --txt /tmp/deal_raw.txt   # infers meta as {txt}.meta.json
 
 Output (stdout, JSON):
     {
@@ -65,14 +66,21 @@ def check_ocr_needed(meta: dict) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description="Check if PDF OCR is needed.")
-    parser.add_argument("--meta", required=True, help="Path to .meta.json from extract_text.py")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--meta", help="Path to .meta.json from extract_text.py")
+    group.add_argument("--txt", help="Path to raw .txt file (meta inferred as {txt}.meta.json)")
     args = parser.parse_args()
 
+    meta_path = args.meta if args.meta else args.txt + ".meta.json"
+
     try:
-        with open(args.meta) as f:
+        with open(meta_path, encoding="utf-8") as f:
             meta = json.load(f)
     except FileNotFoundError:
-        print(f"ERROR: meta file not found: {args.meta}", file=sys.stderr)
+        print(f"ERROR: meta file not found: {meta_path}", file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"ERROR: invalid JSON in meta file {meta_path}: {e}", file=sys.stderr)
         sys.exit(1)
 
     result = check_ocr_needed(meta)

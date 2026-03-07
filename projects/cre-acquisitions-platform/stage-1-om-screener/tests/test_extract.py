@@ -101,9 +101,10 @@ with tempfile.TemporaryDirectory() as tmpdir:
         with open(navaho_txt) as f:
             full_text = f.read()
         check("OCR marker present in output", "[OCR]" in full_text)
-        check("page 4 OCR has content",
-              "DEAL UNDERWRITING" in full_text or "NOI" in full_text or "Net Operating" in full_text,
-              "page 4 pro forma not found in OCR output")
+        ocred_sections = full_text.split("[OCR]")[1:]
+        ocred_content_len = sum(len(s.strip()) for s in ocred_sections)
+        check("OCR sections have substantial content", ocred_content_len > 500,
+              f"OCR content length: {ocred_content_len}")
         total_chars_after = len(full_text)
         check("text grew after OCR", total_chars_after > 16000,
               f"chars after OCR: {total_chars_after}")
@@ -140,10 +141,58 @@ with tempfile.TemporaryDirectory() as tmpdir:
     check("exit code 1 on missing file", code == 1)
     check("error on stderr", "ERROR" in err)
 
+    # Test 6b: check_ocr_needed --txt (n8n-compatible CLI)
+    print("\nTest 6b: check_ocr_needed — --txt flag (infer meta path)")
+    code, out, err = run(CHECK_OCR, ["--txt", navaho_txt])
+    check("exit code 0 with --txt", code == 0)
+    try:
+        ocr_txt_decision = json.loads(out)
+        check("--txt produces same result as --meta", ocr_txt_decision["mode"] == "targeted",
+              f"got '{ocr_txt_decision['mode']}'")
+    except (json.JSONDecodeError, KeyError) as e:
+        check("valid JSON from check_ocr_needed --txt", False, str(e))
+
     # Test 7: Error on missing meta file for check_ocr_needed
     print("\nTest 7: check_ocr_needed — error on missing meta file")
     code, out, err = run(CHECK_OCR, ["--meta", "/tmp/no_such_file.meta.json"])
     check("exit code 1 on missing meta", code == 1)
+
+    # Test 7b: check_ocr_needed — error on invalid JSON
+    print("\nTest 7b: check_ocr_needed — error on invalid JSON meta")
+    bad_meta = os.path.join(tmpdir, "bad.meta.json")
+    with open(bad_meta, "w") as f:
+        f.write("{ invalid json }")
+    code, out, err = run(CHECK_OCR, ["--meta", bad_meta])
+    check("exit code 1 on invalid JSON", code == 1)
+    check("error mentions invalid JSON", "invalid" in err.lower() or "JSON" in err)
+
+    # Test 8: extract_text — error on not a PDF (AC5)
+    print("\nTest 8: extract_text — error on not a PDF")
+    not_pdf = os.path.join(tmpdir, "notes.txt")
+    with open(not_pdf, "w") as f:
+        f.write("not a pdf")
+    code, out, err = run(EXTRACT, ["--pdf", not_pdf, "--out", os.path.join(tmpdir, "out.txt")])
+    check("exit code 1 on not a PDF", code == 1)
+    check("error mentions not a PDF", "not a PDF" in err or "PDF" in err)
+
+    # Test 9: ocr_pdf — full OCR mode (AC4 path)
+    print("\nTest 9: ocr_pdf — full OCR mode")
+    full_ocr_txt = os.path.join(tmpdir, "full_ocr.txt")
+    with open(full_ocr_txt, "w") as f:
+        f.write("[Page 1]\nplaceholder")
+    code, out, err = run(OCR, [
+        "--pdf", NAVAHO,
+        "--txt", full_ocr_txt,
+        "--mode", "full",
+    ])
+    check("full OCR exit code 0", code == 0, err[:100] if code != 0 else "")
+    if os.path.isfile(full_ocr_txt):
+        with open(full_ocr_txt) as f:
+            full_ocr_content = f.read()
+        check("full OCR overwrote file", "[Page 1] [OCR]" in full_ocr_content)
+        check("full OCR has page breaks", "--- PAGE BREAK ---" in full_ocr_content)
+        check("full OCR has 17 pages", full_ocr_content.count("[Page ") == 17,
+              f"got {full_ocr_content.count('[Page ')} pages")
 
 # ---------------------------------------------------------------------------
 print()

@@ -329,3 +329,19 @@ so that we can catch errors stage-by-stage before wiring everything together.
 **And** each test script produces a clear PASS/FAIL result with output shown
 **And** stage N is not built until stage N-1 passes tests on all 3 sample OMs
 **And** no stage is "done" until tested — not just "looks right"
+
+### Story 6.2: Wire pipeline in n8n
+
+As the developer (Will + Zoé),
+we want the OM Screener pipeline orchestrated in n8n,
+so that we can run it end-to-end from a webhook and demo it on real deals.
+
+**Acceptance Criteria:**
+
+**Given** a deal folder path
+**When** we POST to the n8n webhook
+**Then** the pipeline runs: discover → extract/parse → merge → score → format_output
+**And** a CLI runner (run_pipeline.py) exists to test the pipeline without n8n
+**And** n8n workflow JSON is importable and documented
+**And** the human review gate cannot be bypassed in production (architecture principle)
+**And** a minimal workflow with --skip-gate exists for local testing only; production must use the full flow with Wait for Webhook

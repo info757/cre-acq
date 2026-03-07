@@ -167,12 +167,15 @@ def normalize_excel_output(raw: dict) -> dict:
     if expenses is not None:
         out["financials"]["total_expenses"] = round(expenses * 12, 2)
 
-    noi = raw.get("noi_trailing_annualized")
+    noi = raw.get("noi_trailing_annualized") or raw.get("noi_trailing")
     if noi is not None:
         out["financials"]["noi_trailing"] = round(noi, 2)
 
     if raw.get("expense_ratio") is not None:
         out["financials"]["expense_ratio"] = raw["expense_ratio"]
+
+    if raw.get("cap_rate_trailing") is not None:
+        out["financials"]["cap_rate_trailing"] = raw["cap_rate_trailing"]
 
     occ = raw.get("occupancy_pct")
     if occ is not None:
@@ -283,7 +286,7 @@ def main():
     }
 
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
-    with open(args.out, "w") as f:
+    with open(args.out, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=2, cls=DecimalEncoder)
 
     print(f"[merge_inputs] Written to {args.out}", file=sys.stderr)

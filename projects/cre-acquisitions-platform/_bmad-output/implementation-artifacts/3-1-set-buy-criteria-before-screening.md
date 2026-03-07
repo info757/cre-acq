@@ -1,6 +1,6 @@
 # Story 3.1: Set buy criteria before screening
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -92,6 +92,7 @@ stage-1-om-screener/
 
 ## Change Log
 
+- 2026-03-06: Code review fixes applied (markets city match, missing sections = no filter). Story done.
 - 2026-03-06: Dev-story complete. Schema doc, null=no filter in score.py, TestBuyCriteriaDefaults, README update. 19 score tests + 22 review-gate pass. Ready for review.
 - 2026-03-06: Story created via create-story workflow. Ready for dev.
 

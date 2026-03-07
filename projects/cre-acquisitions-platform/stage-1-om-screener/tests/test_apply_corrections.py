@@ -156,6 +156,11 @@ class TestApplyTextCorrection:
         except ValueError as e:
             assert "Invalid field" in str(e)
 
+    def test_dotted_field_path(self):
+        """Dotted path financials.noi_trailing is supported."""
+        corrected = apply_text_correction(BASE_METRICS, "fix: financials.noi_trailing 920000")
+        assert corrected["financials"]["noi_trailing"] == 920000
+
 
 class TestApplyJsonCorrections:
     """Test applying dict-based corrections."""

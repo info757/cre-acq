@@ -140,8 +140,6 @@ def main():
         print(f"  Spliced OCR into {args.txt}", file=sys.stderr)
 
     elif args.mode == "full":
-        # Get total page count first
-        from pdf2image.exceptions import PDFInfoNotInstalledError
         import pdfplumber
 
         with pdfplumber.open(args.pdf) as pdf:

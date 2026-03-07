@@ -125,6 +125,10 @@ def test_format_extracted_metrics_with_sources():
     # Check formatting for percentages
     assert "88.0%" in msg or "88%" in msg  # occupancy_current
 
+    # AC: User instructions for confirmation/correction
+    assert "Reply 'ok'" in msg or "Reply \"ok\"" in msg
+    assert "fix:" in msg
+
     print("✓ test_format_extracted_metrics_with_sources PASSED")
 
 
@@ -150,6 +154,28 @@ def test_format_empty_metrics():
     assert "DEBT" in msg
 
     print("✓ test_format_empty_metrics PASSED")
+
+
+def test_format_zero_values_displayed():
+    """Zero-valued metrics are displayed (not hidden by truthy check)."""
+    metrics = {
+        "deal_id": "test-zero",
+        "extraction_timestamp": "2026-03-05T15:30:00+00:00",
+        "property": {"type": "multifamily", "market": "Test", "units": 0},
+        "financials": {"asking_price": 0, "noi_trailing": 0, "occupancy_current": 0.0},
+        "debt": {"ltv": 0, "dscr": 0},
+        "leases": [],
+        "extraction_flags": [],
+        "_sources": {},
+    }
+
+    msg = format_extracted_metrics(metrics)
+
+    assert "$0" in msg
+    assert "0" in msg
+    assert "0.0%" in msg or "0%" in msg
+
+    print("✓ test_format_zero_values_displayed PASSED")
 
 
 def test_format_no_sources():
@@ -185,5 +211,6 @@ if __name__ == "__main__":
     test_format_percent()
     test_format_extracted_metrics_with_sources()
     test_format_empty_metrics()
+    test_format_zero_values_displayed()
     test_format_no_sources()
     print("\n✅ All tests passed")

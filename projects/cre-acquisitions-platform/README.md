@@ -5,6 +5,15 @@ Built by Will Holt + Zoé. Stack: n8n + Python + Claude.
 
 ---
 
+## Git
+
+This project lives inside the OpenClaw workspace. Two remotes:
+
+- **origin (life_automation)** — OpenClaw workspace. `git push` pushes everything.
+- **cre-acq** — This project only. Run `./push-to-cre-acq.sh` to push just cre-acquisitions-platform.
+
+---
+
 ## The Pipeline
 
 ```
@@ -30,7 +39,8 @@ Built by Will Holt + Zoé. Stack: n8n + Python + Claude.
 cre-acquisitions-platform/
   shared/
     data-model.md        ← THE contract between stages. Read before touching anything.
-    buy-criteria.json    ← user-configurable screening criteria
+    buy-criteria.json    ← user-configurable screening criteria (edit directly, no code deploy)
+    buy-criteria-schema.md ← field reference, null = no filter
   stage-1-om-screener/
     project-brief.md     ← APPROVED
     prd.md               ← APPROVED
@@ -57,7 +67,7 @@ cre-acquisitions-platform/
 | Stage | Brief | PRD | Architecture | Build | Codex Review | Tested | Integration |
 |---|---|---|---|---|---|---|---|
 | Stage 1 — OM Screener (Days 1-3: Ingestion) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ |
-| Stage 1 — OM Screener (Days 4-9: Review→Output) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ |
+| Stage 1 — OM Screener (Days 4-9: Review→Output) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 |
 | Stage 2 — Valuation | 🟡 draft | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
 **Build Status Legend:**

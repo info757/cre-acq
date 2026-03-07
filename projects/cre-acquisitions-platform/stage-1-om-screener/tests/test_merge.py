@@ -5,15 +5,29 @@ Tests the merge() function directly (no Claude calls, no file I/O).
 Claude integration tested separately via manual run on Mill One sample.
 """
 
-import sys
-import os
 import json
+import os
+import subprocess
+import sys
+import tempfile
 import pytest
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from merge_inputs import merge, SCALAR_FIELDS, EMPTY_METRICS
+from merge_inputs import merge, normalize_excel_output, SCALAR_FIELDS, EMPTY_METRICS
+
+PYTHON = os.path.join(os.path.dirname(__file__), "../.venv/bin/python3")
+MERGE = os.path.join(os.path.dirname(__file__), "../src/merge_inputs.py")
+PARSE_EXCEL = os.path.join(os.path.dirname(__file__), "../src/parse_excel.py")
+PROMPT = os.path.join(os.path.dirname(__file__), "../prompts/om-extractor.md")
+SAMPLE_DIR = os.path.join(os.path.dirname(__file__), "../../tests/sample-oms")
+MILL_FILES = [
+    os.path.join(SAMPLE_DIR, "Mill One 2024-2025 Financials.xlsx"),
+    os.path.join(SAMPLE_DIR, "Mill One Commercial RR.xlsx"),
+    os.path.join(SAMPLE_DIR, "Mill One Itemized RR (5).xlsx"),
+    os.path.join(SAMPLE_DIR, "Mill One Loan Info (2 tabs).xlsx"),
+]
 
 
 # ---------------------------------------------------------------------------
@@ -221,6 +235,121 @@ class TestFlagsMerge:
         claude = {**CLAUDE_FULL, "extraction_flags": ["duplicate flag"]}
         merged, _ = merge(excel, claude)
         assert merged["extraction_flags"].count("duplicate flag") == 1
+
+
+class TestNormalizeExcelOutput:
+    """parse_excel flat output maps correctly to nested ExtractedMetrics."""
+
+    def test_cap_rate_trailing_mapped_from_excel(self):
+        raw = {"noi_trailing_annualized": 900000, "cap_rate_trailing": 0.051, "_extraction_flags": []}
+        out = normalize_excel_output(raw)
+        assert out["financials"]["cap_rate_trailing"] == 0.051
+
+    def test_noi_annualized_mapped(self):
+        raw = {"noi_trailing_annualized": 873000, "_extraction_flags": []}
+        out = normalize_excel_output(raw)
+        assert out["financials"]["noi_trailing"] == 873000
+
+    def test_noi_trailing_fallback_when_no_annualized(self):
+        """parse_excel may output noi_trailing without noi_trailing_annualized."""
+        raw = {"noi_trailing": 850000, "_extraction_flags": []}
+        out = normalize_excel_output(raw)
+        assert out["financials"]["noi_trailing"] == 850000
+
+    def test_noi_annualized_preferred_over_noi_trailing(self):
+        """When both present, noi_trailing_annualized wins."""
+        raw = {"noi_trailing_annualized": 900000, "noi_trailing": 850000, "_extraction_flags": []}
+        out = normalize_excel_output(raw)
+        assert out["financials"]["noi_trailing"] == 900000
+
+
+class TestMergeInputsCLI:
+    """Integration: merge_inputs CLI with Excel-only (no Claude)."""
+
+    def test_excel_only_cli_output_structure(self):
+        """Run parse_excel → merge_inputs --excel only; verify ExtractedMetrics structure."""
+        missing = [f for f in MILL_FILES if not os.path.exists(f)]
+        if missing:
+            pytest.skip(f"Missing sample files: {missing}")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            excel_json = os.path.join(tmpdir, "excel.json")
+            out_json = os.path.join(tmpdir, "extracted.json")
+
+            # parse_excel
+            r1 = subprocess.run(
+                [PYTHON, PARSE_EXCEL, "--files", json.dumps(MILL_FILES), "--out", excel_json],
+                capture_output=True, text=True, cwd=os.path.dirname(__file__)
+            )
+            assert r1.returncode == 0, r1.stderr
+
+            # merge_inputs Excel-only
+            r2 = subprocess.run(
+                [PYTHON, MERGE, "--excel", excel_json, "--prompt", PROMPT, "--out", out_json],
+                capture_output=True, text=True, cwd=os.path.dirname(__file__)
+            )
+            assert r2.returncode == 0, r2.stderr
+
+            with open(out_json) as f:
+                data = json.load(f)
+
+            assert "property" in data
+            assert "financials" in data
+            assert "debt" in data
+            assert "leases" in data
+            assert "extraction_flags" in data
+            assert "_sources" in data
+            assert "extraction_timestamp" in data
+            assert data["financials"]["noi_trailing"] is not None
+            assert data["_sources"]["financials"]["noi_trailing"] == "excel"
+
+    def test_raw_text_cli_with_mocked_claude(self):
+        """Run merge_inputs --raw-text with mocked Claude; verify output structure."""
+        stage_dir = os.path.join(os.path.dirname(__file__), "..")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            raw_txt = os.path.join(tmpdir, "raw.txt")
+            out_json = os.path.join(tmpdir, "extracted.json")
+            with open(raw_txt, "w", encoding="utf-8") as f:
+                f.write("Sample OM text for extraction.")
+
+            mock_response = {
+                "property": {"type": "multifamily", "market": "Charlotte, NC", "submarket": None,
+                             "address": None, "vintage": 1998, "units": 142, "total_sf": None},
+                "financials": {"asking_price": 18000000, "price_per_unit": None, "price_per_sf": None,
+                               "noi_trailing": 873000, "noi_proforma": None, "cap_rate_trailing": 0.0485,
+                               "cap_rate_proforma": None, "occupancy_current": 0.91, "occupancy_economic": None,
+                               "gross_revenue": None, "total_expenses": None, "expense_ratio": None},
+                "debt": {"ltv": None, "dscr": None, "interest_rate": None,
+                         "maturity_date": None, "assumable": None},
+                "leases": [],
+                "extraction_flags": [],
+            }
+
+            wrapper = os.path.join(tmpdir, "run_merge.py")
+            with open(wrapper, "w") as f:
+                f.write('''import sys, os
+sys.path.insert(0, os.path.join(os.getcwd(), "src"))
+from unittest.mock import patch
+MOCK = ''' + repr(mock_response) + '''
+with patch("merge_inputs.call_claude", return_value=MOCK):
+    import merge_inputs
+    sys.argv = ["merge_inputs", "--raw-text", sys.argv[1], "--prompt", sys.argv[2], "--out", sys.argv[3]]
+    merge_inputs.main()
+''')
+            prompt_path = os.path.abspath(os.path.join(stage_dir, "prompts", "om-extractor.md"))
+            r = subprocess.run(
+                [PYTHON, wrapper, raw_txt, prompt_path, out_json],
+                capture_output=True, text=True,
+                cwd=os.path.abspath(stage_dir)
+            )
+            assert r.returncode == 0, r.stderr
+            with open(out_json) as f:
+                data = json.load(f)
+            assert "property" in data
+            assert "financials" in data
+            assert "_sources" in data
+            assert data["financials"]["noi_trailing"] == 873000
+            assert data["_sources"]["financials"]["noi_trailing"] == "claude"
 
 
 class TestOutputStructure:

@@ -26,7 +26,6 @@ Or with structured JSON corrections:
 import argparse
 import json
 import sys
-import re
 import pathlib
 from copy import deepcopy
 from decimal import Decimal
@@ -113,11 +112,22 @@ def resolve_field_path(field_name: str) -> tuple:
       - "occupancy_current" (direct field name)
       - "property_occupancy_current" (section_field)
       - "financials_asking_price" (section_field)
+      - "financials.noi_trailing" (dotted path)
     """
+    # Dotted path: section.key
+    if "." in field_name:
+        parts = field_name.split(".", 1)
+        if len(parts) == 2:
+            section, key = parts
+            if section in ("property", "financials", "debt") and key in FIELD_MAPPING:
+                if FIELD_MAPPING[key][0] == section:
+                    return (section, key)
+        raise ValueError(f"Unknown field: {field_name}")
+
     # Direct lookup
     if field_name in FIELD_MAPPING:
         return FIELD_MAPPING[field_name]
-    
+
     # Try section_field pattern: property_units, financials_asking_price, etc.
     for section in ("property", "financials", "debt"):
         prefix = f"{section}_"
@@ -125,7 +135,7 @@ def resolve_field_path(field_name: str) -> tuple:
             key = field_name[len(prefix):]
             if key in FIELD_MAPPING and FIELD_MAPPING[key][0] == section:
                 return FIELD_MAPPING[key]
-    
+
     # If not found, raise error
     raise ValueError(f"Unknown field: {field_name}")
 
@@ -264,8 +274,8 @@ def main():
     # Apply corrections
     try:
         if corrections is None:
-            # No corrections, pass through
-            confirmed = metrics
+            # No corrections, pass through (copy so we can add gate marker)
+            confirmed = deepcopy(metrics)
             print("[apply_corrections] No corrections provided, passing through extracted metrics", file=sys.stderr)
         elif isinstance(corrections, dict):
             # JSON dict of {field: value}
@@ -277,10 +287,13 @@ def main():
             for correction_text in corrections:
                 confirmed = apply_text_correction(confirmed, correction_text)
                 print(f"[apply_corrections]   Applied: {correction_text}", file=sys.stderr)
+
+        # Gate marker: score.py rejects metrics without this (AC5: gate cannot be bypassed)
+        confirmed["_human_confirmed"] = True
     except Exception as e:
         print(f"[apply_corrections] ERROR applying corrections: {e}", file=sys.stderr)
         sys.exit(1)
-    
+
     # Write confirmed metrics
     try:
         with open(args.out, "w") as f:

@@ -52,11 +52,11 @@ development_status:
   epic-2-retrospective: optional
 
   epic-3: in-progress
-  3-1-set-buy-criteria-before-screening: review
+  3-1-set-buy-criteria-before-screening: done
   epic-3-retrospective: optional
 
-  epic-4: backlog
-  4-1-score-the-deal-against-buy-criteria: backlog
+  epic-4: in-progress
+  4-1-score-the-deal-against-buy-criteria: done
   4-2-detect-red-flags-beyond-the-criteria: backlog
   epic-4-retrospective: optional
 
@@ -65,6 +65,7 @@ development_status:
   5-2-output-is-filmable-for-linkedin: backlog
   epic-5-retrospective: optional
 
-  epic-6: backlog
+  epic-6: in-progress
   6-1-each-stage-is-independently-testable: backlog
+  6-2-wire-pipeline-in-n8n: review
   epic-6-retrospective: optional
