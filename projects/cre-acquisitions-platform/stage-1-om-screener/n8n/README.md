@@ -8,7 +8,11 @@ Orchestrates the Stage 1 OM Screener pipeline. See `../architecture.md` for the 
 2. **Execute Command node** enabled (disabled by default in n8n 2.0+). In self-hosted n8n, enable it in settings if needed.
 3. **Python** with project dependencies installed (`pip install -r requirements.txt`)
 4. **ANTHROPIC_API_KEY** in `.env` (for merge Claude extraction and format_output narrative)
-5. **Telegram** env vars for production workflow: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` (used by Send Review and Send Verdict nodes)
+5. **n8n Community Edition works** for this workflow.
+6. Create an n8n **Telegram API** credential and keep the bot token there, not in workflow JSON.
+7. After import, edit the `Workflow Config` node values:
+   - `cre_acq_stage1` — absolute path to `stage-1-om-screener`
+   - `telegram_chat_id` — target chat ID
 
 ## Quick Test Without n8n
 
@@ -24,24 +28,19 @@ Use `--skip-gate` to auto-confirm extracted metrics (no human review). Omit it f
 
 ## Workflow Overview
 
+The production workflow is intentionally compact because `run_pipeline.py` owns the stage orchestration:
+
 | Node | Type | Purpose |
 |------|------|---------|
-| 1 | Webhook | POST `/om-screener/run` — body: `{ deal_folder, deal_id }` |
-| 2 | Execute Command | `discover_inputs.py --folder {{deal_folder}}` |
-| 3 | IF | `has_pdf == true` |
-| 3a | Execute Command | `extract_text.py` |
-| 3b | Execute Command | `check_ocr_needed.py --txt /tmp/{{deal_id}}_raw.txt` |
-| 3c | IF | `needs_ocr == true` → `ocr_pdf.py` |
-| 4 | IF | `has_excel == true` |
-| 4a | Execute Command | `parse_excel.py --files {{excel_paths}} --out /tmp/{{deal_id}}_excel.json` |
-| 5 | Execute Command | `merge_inputs.py` (raw-text + excel) |
-| 6 | Execute Command | `format_review_message.py` |
-| 7 | HTTP Request | Send to Telegram |
-| 8 | Wait for Webhook | POST `/om-screener/confirm/{{deal_id}}` — body: `{ corrections: "ok" \| "fix: field value" }` |
-| 9 | Execute Command | `apply_corrections.py` |
-| 10 | Execute Command | `score.py` |
-| 11 | Execute Command | `format_output.py` |
-| 12 | HTTP Request | Send final verdict to Telegram |
+| 1 | Webhook | POST `/om-screener/run` with `{ deal_folder, deal_id? }` |
+| 2 | Set | `Workflow Config` node with local path + chat ID |
+| 3 | Execute Command | `run_pipeline.py --stop-before-scoring` to produce the review message |
+| 4 | Telegram | Send the review to Telegram |
+| 5 | Telegram | Send the resume URL separately so it cannot be truncated |
+| 6 | Wait | Pause for a POST resume payload containing `corrections` |
+| 7 | Execute Command | `run_pipeline.py --confirm-only` to apply corrections, score, and write output |
+| 8 | Execute Command | Build a plain-text verdict message from `output/{{deal_id}}.json` |
+| 9 | Telegram | Send the final verdict to Telegram |
 
 ## Import Workflow
 
@@ -51,13 +50,30 @@ This folder includes two workflow files:
 - `workflow-testing.json` — **testing-only** skip-gate runner (`run_pipeline.py --skip-gate`)
 
 1. Open n8n → Workflows → Import from File.
-2. For production, import `workflow.json`. Set `CRE_ACQ_STAGE1` or edit the path in the Execute Command nodes.
-3. For local testing only, import `workflow-testing.json`.
-4. **Set project path** in the testing workflow command: replace `/path/to/cre-acquisitions-platform/stage-1-om-screener` or set env var `CRE_ACQ_STAGE1`.
-5. **Enable Execute Command**: n8n 2.0+ disables it by default. Settings → Blocked nodes → enable.
-6. Trigger testing workflow: `curl -X POST https://your-host/webhook/om-screener/run-test -H "Content-Type: application/json" -d '{"deal_folder":"/path/to/deal/folder","deal_id":"mill-one"}'`
+2. For production, import `workflow.json`.
+3. Attach your **Telegram API** credential to all three Telegram nodes:
+   - `Send Review to Telegram`
+   - `Send Approval Instructions`
+   - `Send Verdict to Telegram`
+4. Edit the `Workflow Config` node in the imported workflow:
+   - set `cre_acq_stage1` to your absolute local path
+   - set `telegram_chat_id`
+5. Leave the workflow inactive until the credential and config values are set.
+6. For local testing only, import `workflow-testing.json`.
+7. **Enable Execute Command**: n8n 2.0+ disables it by default. Settings → Blocked nodes → enable.
+8. In n8n, open the `Webhook Start` node and copy the actual **Production URL** or **Test URL** shown by the editor for your instance. Do not assume the short path is the exact live URL on every n8n build.
+9. Trigger the workflow with curl (replace `YOUR_WEBHOOK_URL` and `/path/to/deal/folder`):
 
-**Production workflow** (`workflow.json`) includes: (1) Run Pipeline Stage 1; (2) Send Review to Telegram; (3) Send Approval Instructions with the resume URL in a separate message so it cannot be truncated; (4) Wait for Confirm, POST required; (5) Run Pipeline Confirm, which fails closed if `corrections` is missing from the resume payload; (6) Build Verdict Message; (7) Send Verdict to Telegram as plain text with the actual verdict included. Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in n8n env. When `deal_id` is missing in the webhook body, execution ID is used to avoid temp-file collisions.
+```bash
+curl -X POST "YOUR_WEBHOOK_URL" -H "Content-Type: application/json" -d '{"deal_folder":"/path/to/deal/folder","deal_id":"mill-one"}'
+```
+
+Example for local n8n (copy the real URL from the Webhook node):
+```bash
+curl -X POST "http://localhost:5678/webhook/om-screener/run" -H "Content-Type: application/json" -d '{"deal_folder":"/Users/willholt/some/deal/folder","deal_id":"mill-one"}'
+```
+
+**Production workflow** (`workflow.json`) includes: (1) Webhook Start; (2) `Workflow Config`; (3) Run Pipeline Stage 1; (4) Send Review to Telegram; (5) Send Approval Instructions with the resume URL in a separate message so it cannot be truncated; (6) Wait for Confirm, POST required; (7) Run Pipeline Confirm, which fails closed if `corrections` is missing from the resume payload; (8) Build Verdict Message; (9) Send Verdict to Telegram as plain text with the actual verdict included. This version is designed for n8n Community Edition, does not rely on `$vars` or `$env` inside node expressions, and keeps the bot token in an n8n Telegram credential rather than workflow data. When `deal_id` is missing in the webhook body, execution ID is used to avoid temp-file collisions.
 
 ## Human Review Gate
 
@@ -75,6 +91,10 @@ All scripts run with `cwd` = `PROJECT_ROOT` (stage-1-om-screener). Temp files us
 ## Troubleshooting
 
 - **Execute Command not found**: Enable it in n8n Settings → Blocked nodes
-- **Python not found**: `workflow-testing.json` uses `.venv/bin/python3` when present. Ensure project path is correct and venv exists, or it falls back to system `python3`.
+- **Python not found**: `workflow-testing.json` uses `.venv/bin/python3` when present. Ensure `cre_acq_stage1` in `Workflow Config` points at the project and the venv exists, or it falls back to system `python3`.
+- **Commands fail with `/path/to/...`**: Update the `Workflow Config` node after import. The workflow is meant to be configured there, not via `$env` or `$vars`.
+- **Telegram nodes show missing credentials**: Attach your `Telegram API` credential to each Telegram node before activating the workflow.
+- **Webhook 404 even though the workflow is active**: Copy the exact URL from the Webhook node in the n8n editor. On some n8n builds, the effective live URL is not the hand-typed short path you expect.
+- **Review message fails on Telegram markdown parsing**: The workflow sends the review as plain text on purpose so extracted OM text cannot break Telegram entity parsing.
 - **Claude errors**: Check ANTHROPIC_API_KEY in `.env` (merge_inputs and format_output load it)
 - **Resume request fails immediately**: Ensure the POST body includes `corrections`. Empty or missing corrections are rejected on purpose.

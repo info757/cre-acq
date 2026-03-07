@@ -16,19 +16,43 @@
     },
     {
       "parameters": {
-        "command": "cd \"{{ $env.CRE_ACQ_STAGE1 || '/path/to/cre-acquisitions-platform/stage-1-om-screener' }}\" && CMD=\".venv/bin/python3\"; [ -x \"$CMD\" ] || CMD=\"python3\"; \"$CMD\" src/run_pipeline.py --folder \"{{ $json.body.deal_folder }}\" --deal-id \"{{ $json.body.deal_id || 'deal' }}\" --skip-gate",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-stage1-path",
+              "name": "cre_acq_stage1",
+              "value": "/Users/willholt/.openclaw/workspace-main/projects/cre-acquisitions-platform/stage-1-om-screener",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "workflow-config-test",
+      "name": "Workflow Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [360, 300],
+      "notes": "Community Edition-safe config. Edit this path after import if your workspace differs."
+    },
+    {
+      "parameters": {
+        "command": "={{ 'cd \"' + $('Workflow Config').first().json.cre_acq_stage1 + '\" && CMD=\".venv/bin/python3\"; [ -x \"$CMD\" ] || CMD=\"python3\"; \"$CMD\" src/run_pipeline.py --folder \"' + $('Webhook Start (Test)').first().json.body.deal_folder + '\" --deal-id \"' + ($('Webhook Start (Test)').first().json.body.deal_id || $execution.id) + '\" --skip-gate' }}",
         "options": {}
       },
       "id": "run-pipeline-test",
       "name": "Run Pipeline (Test)",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [460, 300],
+      "position": [520, 300],
       "notes": "TESTING ONLY: bypasses human review gate. Production must use the full gated workflow (architecture.md)."
     }
   ],
   "connections": {
     "Webhook Start (Test)": {
+      "main": [[{ "node": "Workflow Config", "type": "main", "index": 0 }]]
+    },
+    "Workflow Config": {
       "main": [[{ "node": "Run Pipeline (Test)", "type": "main", "index": 0 }]]
     }
   },
