@@ -65,6 +65,23 @@ class TestCoerceValue:
     def test_coerce_string(self):
         assert coerce_value("market", "Dallas, TX") == "Dallas, TX"
 
+    def test_coerce_currency_format(self):
+        """Currency with $ and commas matches Telegram review UX."""
+        assert coerce_value("asking_price", "$42,500,000") == 42500000
+        assert coerce_value("noi_trailing", "$1,982,813") == 1982813
+
+    def test_coerce_percent_format(self):
+        """Percent format (92%, 92.0%) normalizes to decimal for ratio fields."""
+        assert coerce_value("occupancy_current", "92%") == 0.92
+        assert coerce_value("occupancy_current", "92.0%") == 0.92
+        assert coerce_value("ltv", "68%") == 0.68
+        assert coerce_value("expense_ratio", "37.5%") == 0.375
+
+    def test_coerce_decimal_ratio_unchanged(self):
+        """Decimal ratio 0.92 remains 0.92."""
+        assert coerce_value("occupancy_current", "0.92") == 0.92
+        assert coerce_value("ltv", "0.68") == 0.68
+
 
 class TestResolveFieldPath:
     """Test field name to (section, key) resolution."""
@@ -160,6 +177,16 @@ class TestApplyTextCorrection:
         """Dotted path financials.noi_trailing is supported."""
         corrected = apply_text_correction(BASE_METRICS, "fix: financials.noi_trailing 920000")
         assert corrected["financials"]["noi_trailing"] == 920000
+
+    def test_currency_format_in_text_correction(self):
+        """Human-friendly currency format from Telegram review."""
+        corrected = apply_text_correction(BASE_METRICS, "fix: asking_price $42,500,000")
+        assert corrected["financials"]["asking_price"] == 42500000
+
+    def test_percent_format_in_text_correction(self):
+        """Human-friendly percent format from Telegram review."""
+        corrected = apply_text_correction(BASE_METRICS, "fix: occupancy_current 92%")
+        assert corrected["financials"]["occupancy_current"] == 0.92
 
 
 class TestApplyJsonCorrections:

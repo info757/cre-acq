@@ -50,7 +50,21 @@
     },
     {
       "parameters": {
-        "command": "={{ 'cd \"' + $('Workflow Config').first().json.cre_acq_stage1 + '\" && CMD=\".venv/bin/python3\"; [ -x \"$CMD\" ] || CMD=\"python3\"; \"$CMD\" src/run_pipeline.py --folder \"' + $('Webhook Start').first().json.body.deal_folder + '\" --deal-id \"' + ($('Webhook Start').first().json.body.deal_id || $execution.id) + '\" --stop-before-scoring --tmp-dir /tmp' }}",
+        "jsCode": "const fs = require('fs');\nconst body = $('Webhook Start').first().json.body || {};\nconst execId = $execution.id;\nconst stage1 = $('Workflow Config').first().json.cre_acq_stage1;\nconst dealId = body.deal_id || String(execId);\nconst config = {\n  mode: 'stop-before-scoring',\n  folder: body.deal_folder,\n  deal_id: dealId,\n  run_id: String(execId),\n  tmp_dir: '/tmp'\n};\nconst path = '/tmp/om-screener-' + execId + '.json';\nfs.writeFileSync(path, JSON.stringify(config));\nreturn [{ json: { configPath: path } }];"
+      },
+      "id": "write-webhook-config",
+      "name": "Write Webhook Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ],
+      "notes": "Writes webhook payload to temp JSON. Shell receives only the file path, not untrusted input."
+    },
+    {
+      "parameters": {
+        "command": "={{ 'cd \"' + $('Workflow Config').first().json.cre_acq_stage1 + '\" && CMD=\".venv/bin/python3\"; [ -x \"$CMD\" ] || CMD=\"python3\"; \"$CMD\" src/run_pipeline.py --config \"' + $('Write Webhook Config').first().json.configPath + '\"' }}",
         "options": {}
       },
       "id": "run-pipeline-stage1",
@@ -117,7 +131,21 @@
     },
     {
       "parameters": {
-        "command": "={{ 'cd \"' + $('Workflow Config').first().json.cre_acq_stage1 + '\" && CMD=\".venv/bin/python3\"; [ -x \"$CMD\" ] || CMD=\"python3\"; CORRECTIONS=\"' + (($json.body && $json.body.corrections) || $json.corrections || '') + '\"; [ -n \"$CORRECTIONS\" ] || { echo \"Missing corrections in resume payload\" >&2; exit 1; }; \"$CMD\" src/run_pipeline.py --confirm-only --deal-id \"' + ($('Webhook Start').first().json.body.deal_id || $execution.id) + '\" --tmp-dir /tmp --corrections \"$CORRECTIONS\"' }}",
+        "jsCode": "const fs = require('fs');\nconst resume = $input.first().json;\nconst body = resume.body || resume;\nlet corrections = body.corrections;\nif (corrections === undefined || corrections === null) {\n  corrections = '';\n} else if (typeof corrections === 'object') {\n  corrections = JSON.stringify(corrections);\n} else {\n  corrections = String(corrections);\n}\nif (!corrections) {\n  throw new Error('Missing corrections in resume payload');\n}\nconst execId = $execution.id;\nconst stage1 = $('Workflow Config').first().json.cre_acq_stage1;\nconst dealId = ($('Webhook Start').first().json.body || {}).deal_id || String(execId);\nconst config = {\n  mode: 'confirm-only',\n  deal_id: dealId,\n  corrections: corrections,\n  run_id: String(execId),\n  tmp_dir: '/tmp',\n  stage_dir: stage1\n};\nconst path = '/tmp/om-screener-resume-' + execId + '.json';\nfs.writeFileSync(path, JSON.stringify(config));\nreturn [{ json: { configPath: path } }];"
+      },
+      "id": "write-resume-config",
+      "name": "Write Resume Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        820,
+        300
+      ],
+      "notes": "Writes resume payload to temp JSON. Shell receives only the file path."
+    },
+    {
+      "parameters": {
+        "command": "={{ 'cd \"' + $('Workflow Config').first().json.cre_acq_stage1 + '\" && CMD=\".venv/bin/python3\"; [ -x \"$CMD\" ] || CMD=\"python3\"; \"$CMD\" src/run_pipeline.py --config \"' + $('Write Resume Config').first().json.configPath + '\"' }}",
         "options": {}
       },
       "id": "run-pipeline-confirm",
@@ -132,7 +160,7 @@
     },
     {
       "parameters": {
-        "command": "={{ 'cd \"' + $('Workflow Config').first().json.cre_acq_stage1 + '\" && python3 -c \"import json; did=\\'' + ($('Webhook Start').first().json.body.deal_id || $execution.id) + '\\'; d=json.load(open(\\'output/\\'+did+\\'.json\\')); verdict=d.get(\\'verdict\\',\\'UNKNOWN\\'); narrative=d.get(\\'narrative\\',\\'Screening complete.\\'); red_flags=d.get(\\'red_flags\\', []); extra=([\\'\\', \\'Red flags:\\'] + [f\\'- {flag.get(\\\\\\\"flag\\\\\\\", \\\\\\\"flag\\\\\\\")}: {flag.get(\\\\\\\"explanation\\\\\\\", \\\\\\\"\\\\\\\")}\\' for flag in red_flags[:5]]) if red_flags else []; message=\\'\\\\n\\'.join([f\\'Screening complete for {did}\\', f\\'Verdict: {verdict}\\', \\'\\', narrative] + extra); print(message[:3900])\"' }}",
+        "command": "={{ 'cd \"' + $('Workflow Config').first().json.cre_acq_stage1 + '\" && python3 n8n/build_verdict_message.py --config \"' + $('Write Resume Config').first().json.configPath + '\"' }}",
         "options": {}
       },
       "id": "build-verdict-message",
@@ -180,6 +208,17 @@
       "main": [
         [
           {
+            "node": "Write Webhook Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Webhook Config": {
+      "main": [
+        [
+          {
             "node": "Run Pipeline (Stage 1)",
             "type": "main",
             "index": 0
@@ -221,6 +260,17 @@
       ]
     },
     "Wait for Confirm": {
+      "main": [
+        [
+          {
+            "node": "Write Resume Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Resume Config": {
       "main": [
         [
           {

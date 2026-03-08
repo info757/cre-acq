@@ -167,6 +167,14 @@ class TestScreenerVerdicts:
         result = screener.run()
         assert result["verdict"] == "GO"
         print("✓ test_verdict_go PASSED")
+
+    def test_criteria_used_reflects_actual_path(self):
+        """criteria_used in output reflects the path passed to Screener."""
+        custom_path = "/custom/path/to/buy-criteria.json"
+        screener = Screener(STRONG_METRICS, BASE_CRITERIA, criteria_path=custom_path)
+        result = screener.run()
+        assert result["criteria_used"] == custom_path
+        print("✓ test_criteria_used_reflects_actual_path PASSED")
     
     def test_verdict_conditional_soft_flag(self):
         """Soft flag (but no hard fail) → CONDITIONAL."""
@@ -506,6 +514,40 @@ class TestScreenerIntegration:
             os.unlink(criteria_file)
             os.unlink(out_file)
 
+    def test_score_criteria_used_reflects_cli_path(self):
+        """CLI --criteria path appears in output criteria_used."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(STRONG_METRICS, f)
+            metrics_file = f.name
+
+        custom_criteria = "/tmp/custom-buy-criteria.json"
+        with open(custom_criteria, "w") as f:
+            json.dump(BASE_CRITERIA, f)
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            out_file = f.name
+
+        try:
+            from score import main
+            import sys
+            sys.argv = [
+                "score.py",
+                "--metrics", metrics_file,
+                "--criteria", custom_criteria,
+                "--out", out_file,
+            ]
+            main()
+
+            with open(out_file, "r") as f:
+                result = json.load(f)
+
+            assert result["criteria_used"] == os.path.abspath(custom_criteria)
+            print("✓ test_score_criteria_used_reflects_cli_path PASSED")
+        finally:
+            os.unlink(metrics_file)
+            os.unlink(custom_criteria)
+            os.unlink(out_file)
+
 
 if __name__ == "__main__":
     # TestBuyCriteriaDefaults
@@ -539,6 +581,7 @@ if __name__ == "__main__":
     # TestScreenerVerdicts
     tv = TestScreenerVerdicts()
     tv.test_verdict_go()
+    tv.test_criteria_used_reflects_actual_path()
     tv.test_verdict_conditional_soft_flag()
     tv.test_verdict_no_go_hard_fail()
     tv.test_verdict_no_go_property_type()
@@ -555,5 +598,6 @@ if __name__ == "__main__":
     ti = TestScreenerIntegration()
     ti.test_score_strong_deal()
     ti.test_score_weak_deal()
+    ti.test_score_criteria_used_reflects_cli_path()
     
     print("\n✅ All tests passed")

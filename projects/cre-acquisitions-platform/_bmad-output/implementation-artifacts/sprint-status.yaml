@@ -67,5 +67,5 @@ development_status:
 
   epic-6: in-progress
   6-1-each-stage-is-independently-testable: backlog
-  6-2-wire-pipeline-in-n8n: review
+  6-2-wire-pipeline-in-n8n: done
   epic-6-retrospective: optional

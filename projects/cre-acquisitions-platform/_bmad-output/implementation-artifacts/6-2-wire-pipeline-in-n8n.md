@@ -1,6 +1,6 @@
 # Story 6.2: Wire pipeline in n8n
 
-Status: review
+Status: done
 
 <!-- Note: Created after n8n work was done. Story retrofitted to capture scope. -->
 
@@ -40,7 +40,7 @@ so that we can run it end-to-end from a webhook and demo it on real deals.
 
 - **Source:** stage-1-om-screener/architecture.md#n8n Workflow Design
 - **Pipeline order:** discover → extract/parse (parallel) → merge → format_review → [wait] → apply_corrections → score → format_output → Telegram
-- **Temp paths:** /tmp/{{deal_id}}_*.json
+- **Temp paths:** run-scoped under `/tmp/om-screener-{{run_id}}/`, with n8n config handoff files under `/tmp/om-screener-*.json`
 - **Output:** output/{{deal_id}}.json
 
 ### Technical Requirements
@@ -61,6 +61,20 @@ stage-1-om-screener/
     README.md             ← setup, import, trigger
 ```
 
+### Dev Agent Record / File List
+
+| File | Change |
+|------|--------|
+| `src/run_pipeline.py` | CLI runner, --config, --confirm-only, temp cleanup |
+| `n8n/workflow.json` | Production workflow (gated) |
+| `n8n/workflow-testing.json` | Testing-only skip-gate runner |
+| `n8n/build_verdict_message.py` | Verdict message builder |
+| `src/apply_corrections.py` | Structured JSON corrections |
+| `src/score.py` | Scoring engine |
+| `tests/test_run_pipeline.py` | Config mode tests |
+| `tests/test_workflow_security.py` | Workflow security tests |
+| `n8n/README.md` | Setup, import, trigger docs |
+
 ### Testing Requirements
 
 - Run: `python3 src/run_pipeline.py --folder /path/to/sample-oms --skip-gate`
@@ -74,6 +88,7 @@ stage-1-om-screener/
 
 ## Change Log
 
+- 2026-03-08: Story closed. Fixed config lifecycle across confirm and verdict steps, added regression coverage for resume-config handoff, reconciled docs, and validated the production workflow live on local n8n end-to-end: webhook trigger -> wait gate -> POST resume payload -> confirm -> verdict build -> final Telegram send. Status: done.
 - 2026-03-07: Review fixes. Moved Telegram bot auth out of workflow config and into n8n Telegram credentials, updated README to require credential attachment before activation, and reset checked-in `workflow.json` to inactive-by-default so import/configure/activate happens in that order.
 - 2026-03-07: Community Edition pass. Replaced `$vars` dependency with a `Workflow Config` Set node in both workflows, documented Community setup, switched review delivery to plain text to avoid Telegram markdown parse failures, and validated the production-gated path end-to-end on local n8n using Mill One sample files: webhook trigger → review delivery → POST resume payload → confirmed/scored/output JSON → final verdict delivery. Status: review.
 - 2026-03-06: Code review fixes: split workflows (`workflow.json` production scaffold, `workflow-testing.json` testing-only); fixed testing command syntax and python fallback; run_pipeline uses sys.executable (venv); fix loop re-displays and waits for ok.

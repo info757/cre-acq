@@ -148,6 +148,65 @@ class TestReviewGateIntegration:
                 scored = json.load(f)
             assert scored["extracted_metrics"]["financials"]["noi_trailing"] == 920000
 
+    def test_formatted_correction_currency_and_percent(self):
+        """Human-friendly formats ($42,500,000 and 92%) work in corrections."""
+        missing = [f for f in MILL_FILES if not os.path.exists(f)]
+        if missing:
+            pytest.skip(f"Missing sample files: {missing}")
+        if not os.path.exists(CRITERIA):
+            pytest.skip(f"Missing buy-criteria: {CRITERIA}")
+
+        stage_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            excel_json = os.path.join(tmpdir, "excel.json")
+            extracted_json = os.path.join(tmpdir, "extracted.json")
+            confirmed_json = os.path.join(tmpdir, "confirmed.json")
+            scored_json = os.path.join(tmpdir, "scored.json")
+
+            r1 = subprocess.run(
+                [PYTHON, PARSE_EXCEL, "--files", json.dumps(MILL_FILES), "--out", excel_json],
+                capture_output=True, text=True, cwd=stage_dir
+            )
+            assert r1.returncode == 0, r1.stderr
+
+            r2 = subprocess.run(
+                [PYTHON, MERGE, "--excel", excel_json, "--prompt", PROMPT, "--out", extracted_json],
+                capture_output=True, text=True, cwd=stage_dir
+            )
+            assert r2.returncode == 0, r2.stderr
+
+            # Apply correction with currency format
+            r3 = subprocess.run(
+                [PYTHON, APPLY_CORRECTIONS, "--metrics", extracted_json,
+                 "--corrections", "fix: asking_price $42,500,000", "--out", confirmed_json],
+                capture_output=True, text=True, cwd=stage_dir
+            )
+            assert r3.returncode == 0, r3.stderr
+
+            with open(confirmed_json) as f:
+                confirmed = json.load(f)
+            assert confirmed["financials"]["asking_price"] == 42500000
+
+            # Apply correction with percent format (new metrics)
+            extracted2 = os.path.join(tmpdir, "extracted2.json")
+            with open(extracted_json) as f:
+                data = json.load(f)
+            data["financials"]["occupancy_current"] = 0.85
+            with open(extracted2, "w") as f:
+                json.dump(data, f, indent=2)
+
+            confirmed2 = os.path.join(tmpdir, "confirmed2.json")
+            r4 = subprocess.run(
+                [PYTHON, APPLY_CORRECTIONS, "--metrics", extracted2,
+                 "--corrections", "fix: occupancy_current 92%", "--out", confirmed2],
+                capture_output=True, text=True, cwd=stage_dir
+            )
+            assert r4.returncode == 0, r4.stderr
+
+            with open(confirmed2) as f:
+                c2 = json.load(f)
+            assert c2["financials"]["occupancy_current"] == 0.92
+
     def test_score_rejects_unconfirmed_metrics(self):
         """AC5: score.py rejects metrics that bypass human review gate."""
         if not os.path.exists(CRITERIA):

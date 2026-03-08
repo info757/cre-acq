@@ -37,7 +37,17 @@
     },
     {
       "parameters": {
-        "command": "={{ 'cd \"' + $('Workflow Config').first().json.cre_acq_stage1 + '\" && CMD=\".venv/bin/python3\"; [ -x \"$CMD\" ] || CMD=\"python3\"; \"$CMD\" src/run_pipeline.py --folder \"' + $('Webhook Start (Test)').first().json.body.deal_folder + '\" --deal-id \"' + ($('Webhook Start (Test)').first().json.body.deal_id || $execution.id) + '\" --skip-gate' }}",
+        "jsCode": "const fs = require('fs');\nconst body = $('Webhook Start (Test)').first().json.body || {};\nconst execId = $execution.id;\nconst dealId = body.deal_id || String(execId);\nconst config = {\n  mode: 'skip-gate',\n  folder: body.deal_folder,\n  deal_id: dealId,\n  run_id: String(execId),\n  tmp_dir: '/tmp',\n  skip_gate: true\n};\nconst path = '/tmp/om-screener-test-' + execId + '.json';\nfs.writeFileSync(path, JSON.stringify(config));\nreturn [{ json: { configPath: path } }];"
+      },
+      "id": "write-webhook-config-test",
+      "name": "Write Webhook Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "command": "={{ 'cd \"' + $('Workflow Config').first().json.cre_acq_stage1 + '\" && CMD=\".venv/bin/python3\"; [ -x \"$CMD\" ] || CMD=\"python3\"; \"$CMD\" src/run_pipeline.py --config \"' + $('Write Webhook Config').first().json.configPath + '\"' }}",
         "options": {}
       },
       "id": "run-pipeline-test",
@@ -53,6 +63,9 @@
       "main": [[{ "node": "Workflow Config", "type": "main", "index": 0 }]]
     },
     "Workflow Config": {
+      "main": [[{ "node": "Write Webhook Config", "type": "main", "index": 0 }]]
+    },
+    "Write Webhook Config": {
       "main": [[{ "node": "Run Pipeline (Test)", "type": "main", "index": 0 }]]
     }
   },

@@ -86,7 +86,7 @@ The confirmation must POST to the webhook with `{ "corrections": "ok" }` or `{ "
 
 ## File Paths (n8n)
 
-All scripts run with `cwd` = `PROJECT_ROOT` (stage-1-om-screener). Temp files use `/tmp/{{deal_id}}_*.json`. Output goes to `output/{{deal_id}}.json` inside the project.
+All scripts run with `cwd` = `PROJECT_ROOT` (stage-1-om-screener). Temp files use a run-scoped layout: `/tmp/om-screener-{{run_id}}/` (or `{{tmp_dir}}/om-screener-{{run_id}}/` when `tmp_dir` is set). Config files written by n8n are cleaned up after their last consumer: stage configs like `/tmp/om-screener-{{execId}}.json` are removed by `run_pipeline.py`, and resume configs like `/tmp/om-screener-resume-{{execId}}.json` are removed by `build_verdict_message.py` after the verdict is built. Output goes to `output/{{deal_id}}.json` inside the project.
 
 ## Troubleshooting
 

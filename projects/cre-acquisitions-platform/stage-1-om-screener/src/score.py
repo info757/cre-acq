@@ -13,6 +13,7 @@ Usage:
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -41,9 +42,10 @@ class Screener:
         "interest_rate": (0.01, 0.15),           # 1% to 15% (realistic lending rates)
     }
     
-    def __init__(self, metrics: dict, criteria: dict):
+    def __init__(self, metrics: dict, criteria: dict, criteria_path: str = None):
         self.metrics = metrics
         self.criteria = criteria
+        self.criteria_path = criteria_path or "shared/buy-criteria.json"
         self.criteria_results = []
         self.red_flags = []
         self.verdict = None
@@ -395,7 +397,7 @@ class Screener:
         return {
             "deal_id": self.metrics.get("deal_id"),
             "screened_at": datetime.now(timezone.utc).isoformat(),
-            "criteria_used": "shared/buy-criteria.json",
+            "criteria_used": self.criteria_path,
             "verdict": self.verdict,
             "criteria_results": self.criteria_results,
             "red_flags": self.red_flags,
@@ -445,7 +447,8 @@ def main():
     
     # Screen
     try:
-        screener = Screener(metrics, criteria)
+        criteria_path = os.path.abspath(args.criteria)
+        screener = Screener(metrics, criteria, criteria_path)
         result = screener.run()
     except ValueError as e:
         # Criteria validation failed

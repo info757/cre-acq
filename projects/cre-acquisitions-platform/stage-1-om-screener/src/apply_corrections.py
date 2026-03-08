@@ -73,14 +73,36 @@ FIELD_MAPPING = {
 }
 
 
+# Fields that expect decimal ratio (0.92 for 92%). Percent input is normalized.
+_PERCENT_RATIO_FIELDS = frozenset({
+    "occupancy_current", "occupancy_economic", "cap_rate_trailing", "cap_rate_proforma",
+    "expense_ratio", "ltv", "interest_rate",
+})
+
+
+def _parse_numeric_string(val: str) -> float | int | None:
+    """Parse a numeric string, handling $ and commas. Returns None if not parseable."""
+    cleaned = val.replace("$", "").replace(",", "").strip()
+    if not cleaned:
+        return None
+    try:
+        if "." in cleaned:
+            return float(cleaned)
+        return int(cleaned)
+    except ValueError:
+        return None
+
+
 def coerce_value(field_name: str, raw_value: str):
     """
     Coerce a string value to the appropriate Python type.
     
     Rules:
     - "true" / "false" (case-insensitive) → boolean
-    - Numeric strings that look like percentages (0.05, 0.88) → float
-    - Numeric strings → int or float depending on context
+    - Currency: $42,500,000 or $42,500,000.00 → int/float
+    - Percent: 92%, 92.0% → float (0.92 for percent-ratio fields, else 92.0)
+    - Decimal ratio: 0.92 → float
+    - Numeric strings → int or float
     - Everything else → string
     """
     val = raw_value.strip()
@@ -91,15 +113,18 @@ def coerce_value(field_name: str, raw_value: str):
     if val.lower() in ("false", "no"):
         return False
     
-    # Try numeric
-    try:
-        # If it contains a decimal point, float
-        if "." in val:
-            return float(val)
-        # Otherwise try int first, fall back to float
-        return int(val)
-    except ValueError:
-        pass
+    # Percent suffix: "92%", "92.0%"
+    if val.endswith("%"):
+        num = _parse_numeric_string(val[:-1])
+        if num is not None:
+            if field_name in _PERCENT_RATIO_FIELDS:
+                return float(num) / 100.0 if num > 1 else float(num)
+            return float(num)
+    
+    # Currency or plain numeric
+    num = _parse_numeric_string(val)
+    if num is not None:
+        return num
     
     # Otherwise keep as string
     return val
