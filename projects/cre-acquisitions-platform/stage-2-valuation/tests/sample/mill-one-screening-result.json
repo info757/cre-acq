@@ -1,0 +1,54 @@
+{
+  "deal_id": "mill-one",
+  "screened_at": "2026-03-09T12:00:00Z",
+  "criteria_used": "shared/buy-criteria.json",
+  "verdict": "CONDITIONAL",
+  "criteria_results": [
+    {"criterion": "property_type", "value": "mixed_use", "threshold": ["multifamily", "industrial", "mixed_use"], "result": "PASS", "note": null},
+    {"criterion": "min_cap_rate_trailing", "value": 0.051, "threshold": 0.05, "result": "PASS", "note": null},
+    {"criterion": "min_occupancy", "value": 0.92, "threshold": 0.88, "result": "PASS", "note": null},
+    {"criterion": "max_ltv", "value": 0.59, "threshold": 0.70, "result": "PASS", "note": null},
+    {"criterion": "min_dscr", "value": 1.447, "threshold": 1.20, "result": "PASS", "note": null}
+  ],
+  "red_flags": [
+    {"flag": "commercial_concentration", "explanation": "Commercial rent concentration ~41% of gross rent. Requires lease-level modeling for accurate valuation."},
+    {"flag": "property_tax_gap", "explanation": "Stated property taxes ($24,643) below 0.5% of asking. Likely pre-reassessment. Correct taxes ~$298k."}
+  ],
+  "narrative": "Mixed-use deal with assumable debt. Conditional due to commercial concentration and property tax gap.",
+  "extracted_metrics": {
+    "deal_id": "mill-one",
+    "extraction_timestamp": "2026-03-09T11:00:00Z",
+    "property": {
+      "type": "mixed_use",
+      "market": "Greensboro",
+      "submarket": "Greensboro, NC area",
+      "address": null,
+      "vintage": 2024,
+      "units": 76,
+      "total_sf": null
+    },
+    "financials": {
+      "asking_price": 38900000,
+      "price_per_unit": 511842,
+      "price_per_sf": null,
+      "noi_trailing": 1983900,
+      "noi_proforma": 2100000,
+      "cap_rate_trailing": 0.051,
+      "cap_rate_proforma": 0.054,
+      "occupancy_current": 0.92,
+      "occupancy_economic": null,
+      "gross_revenue": 4200000,
+      "total_expenses": 2216100,
+      "expense_ratio": 0.528
+    },
+    "debt": {
+      "ltv": 0.59,
+      "dscr": 1.447,
+      "interest_rate": 0.0433,
+      "maturity_date": null,
+      "assumable": true
+    },
+    "leases": [],
+    "extraction_flags": []
+  }
+}

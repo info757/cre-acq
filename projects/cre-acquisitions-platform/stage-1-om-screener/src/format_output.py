@@ -85,20 +85,20 @@ def build_narrator_prompt(scored_result: dict, prompt_template: str) -> str:
     passing = format_criteria_list(criteria_results, "PASS")
     flagged = format_criteria_list(criteria_results, "FLAG")
     
-    # Substitute variables
+    # Substitute variables (ensure no None — replace requires str)
     prompt = prompt_template
-    prompt = prompt.replace("{{verdict}}", scored_result.get("verdict", "UNKNOWN"))
-    prompt = prompt.replace("{{property_type}}", prop.get("type", "Unknown"))
-    prompt = prompt.replace("{{market}}", prop.get("market", "Unknown"))
+    prompt = prompt.replace("{{verdict}}", str(scored_result.get("verdict") or "UNKNOWN"))
+    prompt = prompt.replace("{{property_type}}", str(prop.get("type") or "Unknown"))
+    prompt = prompt.replace("{{market}}", str(prop.get("market") or "Unknown"))
     prompt = prompt.replace("{{asking_price}}", asking_price_str)
     prompt = prompt.replace("{{cap_rate_trailing}}", cap_rate_str)
     prompt = prompt.replace("{{occupancy}}", occupancy_str)
     prompt = prompt.replace("{{dscr}}", dscr_str)
     prompt = prompt.replace("{{ltv}}", ltv_str)
     prompt = prompt.replace("{{expense_ratio}}", exp_ratio_str)
-    prompt = prompt.replace("{{passing_criteria}}", passing)
-    prompt = prompt.replace("{{flagged_criteria}}", flagged)
-    prompt = prompt.replace("{{red_flags}}", format_red_flags(red_flags))
+    prompt = prompt.replace("{{passing_criteria}}", str(passing or "None"))
+    prompt = prompt.replace("{{flagged_criteria}}", str(flagged or "None"))
+    prompt = prompt.replace("{{red_flags}}", str(format_red_flags(red_flags) or "None"))
     
     return prompt
 

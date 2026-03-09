@@ -49,9 +49,10 @@ cre-acquisitions-platform/
     src/
     tests/
   stage-2-valuation/
-    project-brief.md     ← DRAFT (needs review)
-    prd.md               ← TODO
-    architecture.md      ← TODO
+    project-brief.md     ← APPROVED (v1 scope locked)
+    prd.md               ← APPROVED
+    architecture.md      ← APPROVED
+    v2-argus-lite-brief.md ← v2 lease-level scope (do not start until v1 published)
     prompts/
     src/
     tests/
@@ -68,13 +69,14 @@ cre-acquisitions-platform/
 |---|---|---|---|---|---|---|---|
 | Stage 1 — OM Screener (Days 1-3: Ingestion) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ |
 | Stage 1 — OM Screener (Days 4-9: Review→Output) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 |
-| Stage 2 — Valuation | 🟡 draft | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| Stage 2 — Valuation (v1) | ✅ | ✅ | ✅ | ✅ | ⬜ | 🟡 | ⬜ |
 
 **Build Status Legend:**
 - ✅ Complete (passed tests/Codex review)
 - 🟡 In Progress
 - ⬜ Not Started
 - Integration = n8n workflow wiring + end-to-end demo
+- Stage 2 v1: direct cap + DCF only. No lease-level modeling. Publishable thesis: Argus is optional for many workflows; lease-level complexity reserved for v2.
 
 **Codex Review** is a mandatory BMAD gate. Stage cannot advance to Tested until
 `openai/gpt-5.4-codex` review returns PASS or PASS WITH WARNINGS.
@@ -90,3 +92,32 @@ See `code-review/GATE.md` for process. Reports saved to `code-review/reports/`.
 4. Python does math. Claude does language.
 5. Human review gate after extraction, before scoring. Always.
 6. Codex review gate before Tested. No exceptions. See `code-review/GATE.md`.
+
+---
+
+## Quick Run
+
+**Demo UI** (recommended for video):
+```bash
+demo/.venv/bin/pip install -r demo/requirements.txt
+demo/.venv/bin/python demo/app.py
+```
+Open http://localhost:5001 — click Run pipeline.
+
+**Stage 1 only:**
+```bash
+cd stage-1-om-screener
+python3 src/run_pipeline.py --folder /path/to/deal/folder --skip-gate
+```
+
+**Stage 2 only** (requires Stage 1 output):
+```bash
+cd stage-2-valuation
+../stage-1-om-screener/.venv/bin/python src/run_valuation.py --screening-result ../stage-1-om-screener/output/DEAL_ID.json --skip-gate
+```
+
+**Full pipeline** (Stage 1 → Stage 2):
+```bash
+./stage-1-om-screener/.venv/bin/python pipeline/run-full.py --folder "tests/sample-oms/Mill One" --deal-id mill-one --skip-gate
+```
+(Relative paths are resolved from project root. Use an absolute path for your own deal folder.)

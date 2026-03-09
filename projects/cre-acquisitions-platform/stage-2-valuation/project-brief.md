@@ -1,6 +1,16 @@
 # Project Brief — CRE Valuation Agent
 **BMAD Phase 1: Analysis**
-_Status: DRAFT — awaiting Will's review and approval before moving to PRD_
+_Status: APPROVED for v1 — scope locked for LinkedIn demo_
+
+---
+
+## V1 Scope Lock (Non-Negotiable for This Build)
+
+- **No lease-level commercial parity claim in v1.** We prove direct cap + DCF from structured inputs only. Lease-level complexity (TI, free rent, downtime, commissions, renewal probability) is explicitly out of scope and reserved for v2.
+- **One hero deal.** Mill One or a sanitized broker valuation. One repeatable golden path.
+- **One structured input path.** Stage 1 ScreeningResult + valuation overrides. No automated rent roll PDF parsing.
+- **Direct cap + 10-year DCF only.** No leveraged DCF, no multi-scenario, no lease-by-lease modeling.
+- **Publishable thesis:** Argus is overkill for a large share of CRE valuation work, even if it still matters for the hardest lease-level cases. We do not claim Argus replacement in v1.
 
 ---
 
@@ -207,6 +217,7 @@ comment section. That's the inbound.
 
 ## Out of Scope (MVP)
 
+- **Lease-level commercial modeling (v2).** TI, free rent, downtime, leasing commissions, renewal probability, rent bumps per lease, mark-to-market at rollover. Argus still matters there. We do not claim parity in v1.
 - USPAP-compliant appraisal report (this is analysis, not a certified appraisal)
 - Sales comparison approach (comp-based land value, replacement cost approach)
 - Leveraged DCF / debt service modeling (Layer 2 extension, post-MVP)

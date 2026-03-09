@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRE Acquisitions Pipeline</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f0f12;
+      --surface: #1a1a1f;
+      --border: #2a2a32;
+      --text: #e8e8ed;
+      --muted: #8888a0;
+      --accent: #6366f1;
+      --accent-hover: #818cf8;
+      --success: #22c55e;
+      --stage1: #3b82f6;
+      --stage2: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    .container { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+
+    /* Pipeline flow */
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      padding: 1.5rem;
+      background: var(--surface);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      margin-bottom: 2rem;
+      overflow-x: auto;
+    }
+    .node {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+    }
+    .node.input { background: #1e3a5f; color: #93c5fd; }
+    .node.stage1 { background: #1e3a5f; color: #93c5fd; }
+    .node.handoff { background: #422006; color: #fcd34d; }
+    .node.stage2 { background: #422006; color: #fcd34d; }
+    .node.output { background: #14532d; color: #86efac; }
+    .arrow {
+      color: var(--muted);
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .branch { display: flex; align-items: center; gap: 0.25rem; }
+    .branch .node { font-size: 0.75rem; padding: 0.35rem 0.6rem; }
+
+    /* Run section */
+    .run-section {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    button {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1rem;
+      font-weight: 500;
+      padding: 0.75rem 1.5rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover:not(:disabled) { background: var(--accent-hover); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .status { color: var(--muted); font-size: 0.9rem; }
+
+    /* Results */
+    .results { display: none; }
+    .results.visible { display: block; }
+    .results h2 { font-size: 1.1rem; margin-bottom: 1rem; }
+    .valuation-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .metric {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    .metric-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
+    .metric-value { font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; font-weight: 600; color: var(--success); }
+    .narrative {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: var(--text);
+    }
+    .error {
+      background: #450a0a;
+      color: #fca5a5;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+    }
+
+    /* Math section */
+    .math-section {
+      margin-top: 2rem;
+      border-top: 1px solid var(--border);
+      padding-top: 1.5rem;
+    }
+    .math-section h3 {
+      font-size: 1rem;
+      margin-bottom: 0.75rem;
+      color: var(--muted);
+    }
+    .math-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+    }
+    .math-block .formula { color: var(--accent); margin-bottom: 0.5rem; }
+    .math-block .calc { color: var(--success); }
+    .math-block .inputs { color: var(--muted); font-size: 0.8rem; margin-top: 0.5rem; }
+    .math-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .math-table th, .math-table td { padding: 0.35rem 0.5rem; text-align: left; border-bottom: 1px solid var(--border); }
+    .math-table th { color: var(--muted); font-weight: 500; }
+    .math-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 1rem;
+    }
+    .math-toggle:hover { color: var(--text); border-color: var(--text); }
+
+    /* OM extraction */
+    .extraction-section { margin-bottom: 2rem; }
+    .extraction-section h3 { font-size: 1rem; margin-bottom: 0.75rem; color: var(--muted); }
+    .extraction-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+    .extraction-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      font-size: 0.9rem;
+    }
+    .extraction-block h4 { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; margin-bottom: 0.5rem; }
+    .extraction-row { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; margin-bottom: 0.35rem; }
+    .extraction-row .label { color: var(--muted); }
+    .extraction-row .value { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; }
+    .source-badge {
+      font-size: 0.65rem;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .source-badge.excel { background: #1e3a5f; color: #93c5fd; }
+    .source-badge.claude { background: #422006; color: #fcd34d; }
+    .extraction-flags { margin-top: 1rem; }
+    .extraction-flags h4 { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; margin-bottom: 0.5rem; }
+    .extraction-flags ul { margin: 0; padding-left: 1.25rem; font-size: 0.8rem; color: var(--muted); }
+    .extraction-flags li { margin-bottom: 0.25rem; }
+    .leases-summary { font-size: 0.8rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>CRE Acquisitions Pipeline</h1>
+    <p class="subtitle">OM → Screening → Valuation. One click.</p>
+
+    <div class="flow">
+      <span class="node input">Deal Folder</span>
+      <span class="arrow">→</span>
+      <span class="node stage1">Discover</span>
+      <span class="arrow">→</span>
+      <span class="branch">
+        <span class="node stage1">Extract PDF</span>
+        <span class="arrow">|</span>
+        <span class="node stage1">Parse Excel</span>
+      </span>
+      <span class="arrow">→</span>
+      <span class="node stage1">Merge</span>
+      <span class="arrow">→</span>
+      <span class="node stage1">Score</span>
+      <span class="arrow">→</span>
+      <span class="node stage1">Format</span>
+      <span class="arrow">→</span>
+      <span class="node handoff">ScreeningResult</span>
+      <span class="arrow">→</span>
+      <span class="node stage2">Normalize</span>
+      <span class="arrow">→</span>
+      <span class="node stage2">Direct Cap</span>
+      <span class="arrow">→</span>
+      <span class="node stage2">DCF</span>
+      <span class="arrow">→</span>
+      <span class="node stage2">Flags</span>
+      <span class="arrow">→</span>
+      <span class="node stage2">Format</span>
+      <span class="arrow">→</span>
+      <span class="node output">ValuationResult</span>
+    </div>
+
+    <div class="run-section">
+      <button id="runBtn" onclick="runPipeline()">Run pipeline</button>
+      <span class="status" id="status"></span>
+    </div>
+
+    <div class="results" id="results">
+      <h2>Valuation Result</h2>
+      <div class="valuation-grid" id="metrics"></div>
+      <div id="extractionContainer" style="display:none">
+        <div class="extraction-section">
+          <h3>OM extraction → model inputs</h3>
+          <div id="extractionContent"></div>
+        </div>
+      </div>
+      <div class="narrative" id="narrative"></div>
+      <div id="mathContainer" style="display:none">
+        <div class="math-section">
+          <button class="math-toggle" onclick="toggleMath()">Hide math</button>
+          <div id="mathContent"></div>
+        </div>
+      </div>
+      <div id="mathContainerHidden" style="display:none">
+        <button class="math-toggle" onclick="toggleMath()">Show math</button>
+      </div>
+      <div class="error" id="error" style="display:none"></div>
+    </div>
+  </div>
+
+  <script>
+    const runBtn = document.getElementById('runBtn');
+    const status = document.getElementById('status');
+    const results = document.getElementById('results');
+    const metrics = document.getElementById('metrics');
+    const narrative = document.getElementById('narrative');
+    const errorEl = document.getElementById('error');
+
+    function formatCurrency(n) {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+    }
+
+    function fmt(val, type) {
+      if (val == null) return '—';
+      if (type === 'pct') return (val * 100).toFixed(1) + '%';
+      if (type === 'currency') return formatCurrency(val);
+      if (typeof val === 'number' && val < 1 && val > 0) return (val * 100).toFixed(2) + '%';
+      return String(val);
+    }
+
+    function sourceBadge(src) {
+      if (!src) return '';
+      return `<span class="source-badge ${src}">${src}</span>`;
+    }
+
+    function renderExtraction(ext) {
+      const container = document.getElementById('extractionContainer');
+      const content = document.getElementById('extractionContent');
+      if (!ext) { container.style.display = 'none'; return; }
+      const src = ext._sources || {};
+      const prop = ext.property || {};
+      const fin = ext.financials || {};
+      const debt = ext.debt || {};
+      const leases = ext.leases || [];
+      const flags = ext.extraction_flags || [];
+      const ps = src.property || {};
+      const fs = src.financials || {};
+      const ds = src.debt || {};
+
+      let html = '<div class="extraction-grid">';
+      html += `<div class="extraction-block">
+        <h4>Property</h4>
+        <div class="extraction-row"><span class="label">Type</span><span class="value">${prop.type || '—'} ${sourceBadge(ps.type)}</span></div>
+        <div class="extraction-row"><span class="label">Market</span><span class="value">—</span></div>
+        <div class="extraction-row"><span class="label">Address</span><span class="value">—</span></div>
+        <div class="extraction-row"><span class="label">Units</span><span class="value">${prop.units ?? '—'} ${sourceBadge(ps.units)}</span></div>
+        <div class="extraction-row"><span class="label">Total SF</span><span class="value">${prop.total_sf != null ? prop.total_sf.toLocaleString() : '—'} ${sourceBadge(ps.total_sf)}</span></div>
+      </div>`;
+      html += `<div class="extraction-block">
+        <h4>Financials</h4>
+        <div class="extraction-row"><span class="label">Asking price</span><span class="value">${fmt(fin.asking_price, 'currency')} ${sourceBadge(fs.asking_price)}</span></div>
+        <div class="extraction-row"><span class="label">NOI trailing</span><span class="value">${fmt(fin.noi_trailing, 'currency')} ${sourceBadge(fs.noi_trailing)}</span></div>
+        <div class="extraction-row"><span class="label">NOI proforma</span><span class="value">${fmt(fin.noi_proforma, 'currency')} ${sourceBadge(fs.noi_proforma)}</span></div>
+        <div class="extraction-row"><span class="label">Cap rate</span><span class="value">${fmt(fin.cap_rate_trailing || fin.cap_rate_proforma, 'pct')} ${sourceBadge(fs.cap_rate_trailing || fs.cap_rate_proforma)}</span></div>
+        <div class="extraction-row"><span class="label">Occupancy</span><span class="value">${fmt(fin.occupancy_current, 'pct')} ${sourceBadge(fs.occupancy_current)}</span></div>
+        <div class="extraction-row"><span class="label">Gross revenue</span><span class="value">${fmt(fin.gross_revenue, 'currency')} ${sourceBadge(fs.gross_revenue)}</span></div>
+        <div class="extraction-row"><span class="label">Expenses</span><span class="value">${fmt(fin.total_expenses, 'currency')} ${sourceBadge(fs.total_expenses)}</span></div>
+        <div class="extraction-row"><span class="label">Expense ratio</span><span class="value">${fmt(fin.expense_ratio, 'pct')} ${sourceBadge(fs.expense_ratio)}</span></div>
+      </div>`;
+      html += `<div class="extraction-block">
+        <h4>Debt</h4>
+        <div class="extraction-row"><span class="label">Interest rate</span><span class="value">${fmt(debt.interest_rate, 'pct')} ${sourceBadge(ds.interest_rate)}</span></div>
+        <div class="extraction-row"><span class="label">Maturity</span><span class="value">${debt.maturity_date || '—'} ${sourceBadge(ds.maturity_date)}</span></div>
+        <div class="extraction-row"><span class="label">Assumable</span><span class="value">${debt.assumable != null ? (debt.assumable ? 'Yes' : 'No') : '—'} ${sourceBadge(ds.assumable)}</span></div>
+        <div class="extraction-row"><span class="label">LTV</span><span class="value">${fmt(debt.ltv, 'pct')}</span></div>
+        <div class="extraction-row"><span class="label">DSCR</span><span class="value">${fmt(debt.dscr)}</span></div>
+      </div>`;
+      html += `<div class="extraction-block">
+        <h4>Leases</h4>
+        <div class="leases-summary">${leases.length} tenants extracted</div>
+        ${leases.slice(0, 5).map(l => `<div class="extraction-row" style="margin-top:0.25rem"><span class="label">${l.tenant || '—'}</span><span class="value">${l.sf != null ? l.sf.toLocaleString() + ' SF' : '—'}</span></div>`).join('')}
+        ${leases.length > 5 ? `<div class="leases-summary" style="margin-top:0.5rem">+ ${leases.length - 5} more</div>` : ''}
+      </div>`;
+      html += '</div>';
+      if (flags.length > 0) {
+        html += `<div class="extraction-flags"><h4>Extraction flags</h4><ul>${flags.slice(0, 8).map(f => `<li>${f}</li>`).join('')}</ul>${flags.length > 8 ? `<div class="leases-summary">+ ${flags.length - 8} more</div>` : ''}</div>`;
+      }
+      content.innerHTML = html;
+      container.style.display = 'block';
+    }
+
+    function runPipeline() {
+      runBtn.disabled = true;
+      status.textContent = 'Running… (~60s)';
+      results.classList.remove('visible');
+      errorEl.style.display = 'none';
+
+      fetch('/api/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folder: 'tests/sample-oms/Mill One', deal_id: 'mill-one' }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          runBtn.disabled = false;
+          status.textContent = 'Done.';
+
+          if (data.error) {
+            errorEl.textContent = data.error + (data.stderr ? '\n\n' + data.stderr : '');
+            errorEl.style.display = 'block';
+            results.classList.add('visible');
+            return;
+          }
+
+          metrics.innerHTML = `
+            <div class="metric"><div class="metric-label">Direct Cap</div><div class="metric-value">${formatCurrency(data.direct_cap_value)}</div></div>
+            <div class="metric"><div class="metric-label">DCF Value</div><div class="metric-value">${formatCurrency(data.dcf_value)}</div></div>
+            <div class="metric"><div class="metric-label">Suggested Offer</div><div class="metric-value">${formatCurrency(data.suggested_offer)}</div></div>
+            <div class="metric"><div class="metric-label">IRR</div><div class="metric-value">${(data.returns?.irr * 100 || 0).toFixed(1)}%</div></div>
+            <div class="metric"><div class="metric-label">Equity Multiple</div><div class="metric-value">${(data.returns?.equity_multiple || 0).toFixed(2)}x</div></div>
+          `;
+          narrative.textContent = data.narrative || '';
+          renderExtraction(data.extraction);
+          renderMath(data.math);
+          results.classList.add('visible');
+        })
+        .catch(err => {
+          runBtn.disabled = false;
+          status.textContent = 'Error.';
+          errorEl.textContent = err.message;
+          errorEl.style.display = 'block';
+          results.classList.add('visible');
+        });
+    }
+
+    function renderMath(math) {
+      const container = document.getElementById('mathContainer');
+      const hidden = document.getElementById('mathContainerHidden');
+      const content = document.getElementById('mathContent');
+      if (!math) {
+        container.style.display = 'none';
+        hidden.style.display = 'none';
+        return;
+      }
+      let html = '';
+      if (math.direct_cap) {
+        const dc = math.direct_cap;
+        html += `<div class="math-block">
+          <div class="formula">Direct Cap: ${dc.formula}</div>
+          <div class="calc">${dc.calculation}</div>
+          <div class="inputs">NOI = ${formatCurrency(dc.inputs.noi)} | cap rate = ${(dc.inputs.cap_rate_pct).toFixed(2)}%</div>
+        </div>`;
+      }
+      if (math.dcf) {
+        const dcf = math.dcf;
+        html += `<div class="math-block">
+          <div class="formula">DCF: ${dcf.formula}</div>
+          <div class="inputs">NOI projection: ${dcf.noi_projection} (g = ${(dcf.inputs.rent_growth * 100).toFixed(0)}%)</div>
+          <div class="inputs">Reversion: ${dcf.reversion_formula}</div>
+          <div class="inputs">PV: ${dcf.pv_formula} (r = ${(dcf.inputs.discount_rate * 100).toFixed(0)}%)</div>
+          <div style="margin-top:0.75rem">NOI Year 1 = ${formatCurrency(dcf.inputs.noi_yr1)} | Hold = ${dcf.inputs.hold_years} yrs | Exit cap = ${(dcf.inputs.exit_cap * 100).toFixed(2)}%</div>
+        </div>`;
+        if (dcf.cash_flows && dcf.cash_flows.length) {
+          html += `<div class="math-block">
+            <div class="formula">NOI projection (Years 1–10)</div>
+            <table class="math-table"><tr><th>Year</th><th>NOI</th></tr>`;
+          dcf.cash_flows.forEach((cf, i) => {
+            html += `<tr><td>${i + 1}</td><td>${formatCurrency(cf)}</td></tr>`;
+          });
+          html += `</table>
+            <div style="margin-top:0.5rem">Reversion (Year 11 NOI ÷ exit cap) = ${formatCurrency(dcf.reversion)}</div>
+          </div>`;
+        }
+      }
+      if (math.irr) {
+        const irr = math.irr;
+        html += `<div class="math-block">
+          <div class="formula">IRR: ${irr.formula}</div>
+          <div class="inputs">Initial (asking) = ${formatCurrency(irr.initial)} | Cash flows = 10 yrs NOI + reversion</div>
+        </div>`;
+      }
+      if (math.equity_multiple && math.equity_multiple.initial > 0) {
+        const em = math.equity_multiple;
+        html += `<div class="math-block">
+          <div class="formula">Equity Multiple: ${em.formula}</div>
+          <div class="calc">${formatCurrency(em.total_proceeds)} ÷ ${formatCurrency(em.initial)} = ${(em.total_proceeds / em.initial).toFixed(2)}x</div>
+        </div>`;
+      }
+      content.innerHTML = html;
+      container.style.display = 'block';
+      hidden.style.display = 'none';
+    }
+
+    function toggleMath() {
+      const container = document.getElementById('mathContainer');
+      const hidden = document.getElementById('mathContainerHidden');
+      if (container.style.display === 'none') {
+        container.style.display = 'block';
+        hidden.style.display = 'none';
+      } else {
+        container.style.display = 'none';
+        hidden.style.display = 'block';
+      }
+    }
+  </script>
+</body>
+</html>
