@@ -66,6 +66,47 @@ _Both stages read and write to this structure. Do not change it without updating
 }
 ```
 
+**Leases:** The `leases` array accepts either **LeaseV1** (tenant, sf, expiration, rent_per_sf) or **LeaseV2** (extends with optional rich fields). V1 format remains valid; v2 adds optional fields for lease-level modeling.
+
+---
+
+## LeaseV1 (minimal — Stage 1, v1 valuation)
+
+```json
+{
+  "tenant": "string | null",
+  "sf": "number | null",
+  "expiration": "string | null",
+  "rent_per_sf": "number | null"
+}
+```
+
+---
+
+## LeaseV2 (Stage 2 v2 — Argus-lite lease-level modeling)
+
+Extends LeaseV1. All v2 fields are optional; missing fields have sensible defaults (e.g., renewal_probability 0.5, downtime_months 0). V1 leases can be upgraded to LeaseV2.
+
+```json
+{
+  "tenant": "string | null",
+  "sf": "number | null",
+  "expiration": "string | null",
+  "rent_per_sf": "number | null",
+  "lease_start": "string (ISO8601 date) | null",
+  "lease_end": "string (ISO8601 date) | null",
+  "base_rent": "number | null",
+  "rent_step_schedule": [{"date": "string", "rent_per_sf": "number"}] | null,
+  "market_rent_at_rollover": "number | null",
+  "ti_per_sf": "number | null",
+  "free_rent_months": "integer | null",
+  "downtime_months": "number | null",
+  "leasing_commission_pct": "number | null",
+  "renewal_probability": "number (0-1) | null",
+  "tenant_category": "string (anchor | inline | etc) | null"
+}
+```
+
 ---
 
 ## ScreeningResult (Stage 1 final output)
@@ -152,6 +193,18 @@ can provide to improve valuation accuracy:
 
 ---
 
+## ValuationInputV2 (Stage 2 v2 — lease-level)
+
+Same as ValuationInput but extracted_metrics.leases may contain LeaseV2[]. Used by stage-2-valuation/v2 pipeline.
+
+---
+
+## ValuationResultV2 (Stage 2 v2 output)
+
+Extends ValuationResult. May include lease-level detail, lease_drivers_narrative, and sensitivity from lease-level DCF.
+
+---
+
 ## buy-criteria.json (shared config)
 
 ```json
@@ -173,3 +226,4 @@ can provide to improve valuation accuracy:
 ---
 
 _Any change to this file requires updating both stage-1 and stage-2 code and tests._
+_LeaseV2 and ValuationInputV2/ValuationResultV2 added for stage-2-valuation/v2 (Argus-lite)._
