@@ -1,0 +1,100 @@
+<h1 id="bar-cocoa-curation-agent-overview">Bar &amp; Cocoa — Curation
+Agent: Overview</h1>
+<h2 id="what-it-does">What it does</h2>
+<p>The agent helps you build the monthly gift box in two moves instead
+of twenty. You tell it what you want in plain English — “select the
+box,” “why was this bar included,” “how many bars expire before June” —
+and it handles the rest. Under the hood it scores all 100 bars in
+inventory, picks the best 10 that balance expiry urgency with curation
+quality, and shows you its reasoning for every pick.</p>
+<hr />
+<h2 id="how-to-use-it">How to use it</h2>
+<p>Open the chat and try any of these:</p>
+<ul>
+<li><code>Select the box</code> — runs a full selection and shows the
+10-bar breakdown</li>
+<li><code>Lower the velocity threshold to 1.0</code> — adjusts a rule
+and immediately reselects</li>
+<li><code>Why was the Miso Caramel Dark chosen?</code> — explains the
+inventory and curation reasoning for any bar</li>
+<li><code>How many bars expire before June?</code> — answers inventory
+questions directly</li>
+<li><code>What's our most urgent bar?</code> — general questions work
+too</li>
+</ul>
+<hr />
+<h2 id="the-current-rules-plain-english">The current rules (plain
+English)</h2>
+<h3 id="what-gets-considered">What gets considered</h3>
+<ul>
+<li>Only bars selling fewer than <strong>1.5 units/week</strong> are
+eligible — faster sellers don’t need help moving</li>
+<li>Bars reordered fewer than <strong>4 times/year</strong> are excluded
+— too hard to restock safely if we deplete them</li>
+<li>Bars expiring within <strong>90 days</strong> are flagged as urgent
+and prioritized</li>
+</ul>
+<h3 id="hard-constraints-the-agent-never-violates">Hard constraints the
+agent never violates</h3>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Bars per box</td>
+<td>Exactly 10</td>
+</tr>
+<tr>
+<td>Max bars from same maker</td>
+<td>2</td>
+</tr>
+<tr>
+<td>Max bars from same origin country</td>
+<td>3</td>
+</tr>
+<tr>
+<td>Minimum dark chocolate bars</td>
+<td>3</td>
+</tr>
+<tr>
+<td>Minimum distinct origins</td>
+<td>4</td>
+</tr>
+<tr>
+<td>Box price ceiling</td>
+<td>$150</td>
+</tr>
+</tbody>
+</table>
+<h3 id="what-it-optimizes-for-in-priority-order">What it optimizes for
+(in priority order)</h3>
+<ol type="1">
+<li>Bars most at risk of expiring before they sell through</li>
+<li>Range of intensities — mild through bold</li>
+<li>Variety of types — dark, milk, white, inclusions</li>
+<li>Flavor diversity across the box</li>
+</ol>
+<h3 id="what-it-never-touches">What it never touches</h3>
+<ul>
+<li><strong>Fast movers</strong> (≥4 units/week) — they sell themselves,
+no need to promote them</li>
+<li><strong>Rare/imported bars</strong> reordered once or twice a year —
+can’t safely deplete stock we can’t reliably replace</li>
+</ul>
+<hr />
+<h2 id="what-you-can-change">What you can change</h2>
+<p>Any rule above can be adjusted mid-conversation. Examples:</p>
+<ul>
+<li><em>“Change max bars per maker to 3”</em></li>
+<li><em>“Raise the price ceiling to $175”</em></li>
+<li><em>“Lower the expiry threshold to 60 days”</em></li>
+</ul>
+<p>The agent will acknowledge the change and immediately show you a new
+box with the updated rules applied. Rules reset if you start a new chat
+session.</p>
+<hr />
+<p><em>Bar &amp; Cocoa POC — built by Triad AI</em></p>

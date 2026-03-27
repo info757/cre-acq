@@ -1,0 +1,194 @@
+{
+  "bundles": [
+    {
+      "bundle_id": "ST-BAR-401-3",
+      "name": "World Gift Box (Orange Box - Milk/Dark Milk)",
+      "box_sku": "BOX-001",
+      "box_name": "Bar & Cocoa Orange Box",
+      "total_items": 11,
+      "bar_count": 10,
+      "hard_constraints": {
+        "product_type": "Chocolate Bars",
+        "min_net_weight_g": 45,
+        "max_retail_price": 16.00,
+        "cacaonum_max": 60,
+        "cacaonum_blank_ok": true,
+        "chocolate_type_must_include": ["Milk", "Dark Milk"],
+        "chocolate_type_all_must_be": ["Plain"],
+        "min_box_retail_value": 98.00,
+        "max_box_retail_value": 135.00,
+        "min_inventory": 10,
+        "min_days_till_expiry": 55
+      },
+      "preferences": {
+        "max_bars_per_vendor": 1,
+        "max_bars_per_source_country": 2,
+        "source_country_blend_max": 4,
+        "max_bars_same_cacaonum": 6,
+        "max_bars_chocolate_type_salt": 1
+      },
+      "sort_priority": "sellout_days_ascending",
+      "notes": "Deprioritize S-SKUs unless stock >= 30 and expiring. Sort by sellout days first, then margin."
+    },
+    {
+      "bundle_id": "ST-BAR-401-5",
+      "name": "World Gift Box (Crane Box - Milk/Dark Milk)",
+      "box_sku": "BOX-005",
+      "box_name": "Bar & Cocoa Crane Box",
+      "total_items": 11,
+      "bar_count": 10,
+      "hard_constraints": {
+        "product_type": "Chocolate Bars",
+        "min_net_weight_g": 45,
+        "max_retail_price": 16.00,
+        "cacaonum_max": 65,
+        "cacaonum_blank_ok": true,
+        "chocolate_type_must_include": ["Milk", "Dark Milk"],
+        "min_box_retail_value": 98.00,
+        "max_box_retail_value": 135.00,
+        "min_inventory": 10,
+        "min_days_till_expiry": 55
+      },
+      "preferences": {
+        "max_bars_per_vendor": 1,
+        "max_bars_per_source_country": 2,
+        "source_country_blend_max": 4,
+        "max_bars_same_cacaonum": 7,
+        "max_bars_cacaonum_under_42": 2,
+        "plain_bars_min": 4,
+        "plain_bars_max": 5,
+        "inclusion_limits": {
+          "Nibs": 1,
+          "Filled_or_Praline": 1,
+          "Salt": 1,
+          "Coffee": 1,
+          "Spice": 2,
+          "Fruit": 3,
+          "Nuts": 3
+        },
+        "max_bars_same_inclusion_flavor": 1
+      },
+      "sort_priority": "sellout_days_ascending"
+    },
+    {
+      "bundle_id": "ST-BAR-402-3",
+      "name": "World Gift Box (Crane Box - Mixed)",
+      "box_sku": "BOX-005",
+      "box_name": "Bar & Cocoa Crane Box",
+      "total_items": 11,
+      "bar_count": 10,
+      "hard_constraints": {
+        "product_type": "Chocolate Bars",
+        "min_net_weight_g": 45,
+        "max_retail_price": 16.00,
+        "cacaonum_max": 88,
+        "cacaonum_blank_ok": true,
+        "min_box_retail_value": 98.00,
+        "max_box_retail_value": 135.00,
+        "min_inventory": 10,
+        "min_days_till_expiry": 55
+      },
+      "preferences": {
+        "max_bars_per_vendor": 1,
+        "max_bars_per_source_country": 2,
+        "source_country_blend_max": 3,
+        "max_bars_same_cacaonum": 6,
+        "max_bars_cacaonum_over_79": 2,
+        "milk_dark_milk_plain_min": 1,
+        "milk_dark_milk_plain_max": 2,
+        "dark_plain_min": 1,
+        "dark_plain_max": 3,
+        "milk_dark_milk_white_combined_max": 5,
+        "plain_bars_min": 4,
+        "plain_bars_max": 5,
+        "white_bars_min": 1,
+        "white_bars_max": 2,
+        "white_plain_max_if_2_white": 1,
+        "inclusion_limits": {
+          "Salt": 1,
+          "Nibs": 1,
+          "Filled_or_Praline": 1,
+          "Coffee": 1,
+          "Spice": 2,
+          "Nuts": 3,
+          "Fruit": 3
+        },
+        "max_bars_same_inclusion_flavor": 1
+      },
+      "sort_priority": "sellout_days_ascending"
+    },
+    {
+      "bundle_id": "ST-BAR-404-3",
+      "name": "World Gift Box (Orange Box - Vegan Dark Plain)",
+      "box_sku": "BOX-001",
+      "box_name": "Bar & Cocoa Orange Box",
+      "total_items": 11,
+      "bar_count": 10,
+      "hard_constraints": {
+        "product_type": "Chocolate Bars",
+        "min_net_weight_g": 50,
+        "max_retail_price": 15.00,
+        "cacaonum_max": 90,
+        "cacaonum_blank_ok": true,
+        "cacaonum_min": 63,
+        "chocolate_type_must_be": "Dark",
+        "chocolate_type_subtype": "Plain",
+        "diet_must_contain": ["Vegan", "Vegan+"],
+        "min_box_retail_value": 98.00,
+        "max_box_retail_value": 135.00,
+        "min_inventory": 10,
+        "min_days_till_expiry": 55
+      },
+      "preferences": {
+        "max_bars_per_vendor": 1,
+        "max_bars_per_source_country": 2,
+        "source_country_blend_max": 3,
+        "max_bars_cacaonum_70": 6,
+        "max_bars_cacaonum_over_84": 4,
+        "max_bars_chocolate_type_salt": 1
+      },
+      "sort_priority": "sellout_days_ascending"
+    },
+    {
+      "bundle_id": "ST-BAR-404-5",
+      "name": "World Gift Box (Crane Box - Vegan Dark)",
+      "box_sku": "BOX-005",
+      "box_name": "Bar & Cocoa Crane Box",
+      "total_items": 11,
+      "bar_count": 10,
+      "hard_constraints": {
+        "product_type": "Chocolate Bars",
+        "min_net_weight_g": 40,
+        "max_retail_price": 15.00,
+        "cacaonum_max": 90,
+        "cacaonum_blank_ok": true,
+        "chocolate_type_must_be": "Dark",
+        "diet_must_contain": ["Vegan", "Vegan+"],
+        "min_box_retail_value": 98.00,
+        "max_box_retail_value": 135.00,
+        "min_inventory": 10,
+        "min_days_till_expiry": 55
+      },
+      "preferences": {
+        "max_bars_per_vendor": 1,
+        "max_bars_per_source_country": 2,
+        "source_country_blend_max": 3,
+        "max_bars_same_cacaonum": 6,
+        "max_bars_cacaonum_over_82": 4,
+        "plain_bars_min": 4,
+        "plain_bars_max": 5,
+        "inclusion_limits": {
+          "Nibs": 1,
+          "Filled_or_Praline": 1,
+          "Salt": 1,
+          "Coffee": 1,
+          "Spice": 2,
+          "Fruit": 3,
+          "Nuts": 3
+        },
+        "max_bars_same_inclusion_flavor": 1
+      },
+      "sort_priority": "sellout_days_ascending"
+    }
+  ]
+}
